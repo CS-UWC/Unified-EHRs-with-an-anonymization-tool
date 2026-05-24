@@ -41,7 +41,7 @@ const MedicalHistory: React.FC = () => {
       facility: "Netcare Hospital",
       doctor: "Dr. Adams",
       diagnosis: "Routine Checkup",
-      pdf: "/documents/routine-checkup-report.pdf",
+      pdf: "./documents/routine-checkup-report.pdf",
     },
 
     {
@@ -49,7 +49,7 @@ const MedicalHistory: React.FC = () => {
       facility: "Netcare Hospital",
       doctor: "Dr. Adams",
       diagnosis: "Hypertension",
-      pdf: "/documents/hypertension-report.pdf",
+      pdf: "./documents/hypertension-report.pdf",
     },
 
     {
@@ -57,7 +57,7 @@ const MedicalHistory: React.FC = () => {
       facility: "DR Smith Surgery",
       doctor: "Dr Smith",
       diagnosis: "Asthma",
-      pdf: "/documents/asthma-report.pdf",
+      pdf: "./documents/asthma-report.pdf",
     },
 
     {
@@ -65,7 +65,7 @@ const MedicalHistory: React.FC = () => {
       facility: "Tygerberg Hospital",
       doctor: "Dr Nkewu",
       diagnosis: "Corona Virus",
-      pdf: "/documents/covid-report-1.pdf",
+      pdf: "./documents/covid-report-1.pdf",
     },
 
     {
@@ -73,7 +73,7 @@ const MedicalHistory: React.FC = () => {
       facility: "Belhar Day Hospital",
       doctor: "Sister Mlonzi",
       diagnosis: "Corona Virus",
-      pdf: "/documents/covid-report-2.pdf",
+      pdf: "./documents/covid-report-2.pdf",
     },
 
   ];
