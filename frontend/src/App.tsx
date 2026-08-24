@@ -12,6 +12,7 @@ import Appointments from "./pages/Appointments";
 import LabResults from "./pages/LabResults";
 import Prescriptions from "./pages/Prescriptions";
 import Privacy from "./pages/Privacy";
+import PDFViewer from "./pages/PDFViewer";
 
 /**
  * Main Application Component
@@ -68,7 +69,10 @@ function App() {
         <Route
           path="/privacy"
           element={<Privacy />}
+        
         />
+
+        <Route path="/pdf-viewer" element={<PDFViewer />} />
 
       </Routes>
 

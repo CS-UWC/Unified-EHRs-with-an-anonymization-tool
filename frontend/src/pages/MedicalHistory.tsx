@@ -84,9 +84,9 @@ const MedicalHistory: React.FC = () => {
 
   const handleViewPDF = (pdfPath: string): void => {
 
-    window.open(pdfPath, "_blank");
+  window.open(`/pdf-viewer?file=${pdfPath}`, "_blank");
 
-  };
+};
 
   /* ===================================================== */
   /* JSX                                                   */
