@@ -43,6 +43,20 @@ class User(Base):
         nullable=False
     )
 
+    # ========================================================
+    # AUTHORIZATION
+    # ========================================================
+
+    role = Column(
+        String,
+        nullable=False,
+        default="PATIENT"
+    )
+
+    # ========================================================
+    # PATIENT PROFILE
+    # ========================================================
+
     # One user = one patient profile
     patient = relationship(
         "Patient",

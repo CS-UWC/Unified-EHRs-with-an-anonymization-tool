@@ -13,7 +13,6 @@ from fastapi import HTTPException
 
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user
 
 from app.dependencies import get_db
 
@@ -22,8 +21,20 @@ from app.models.appointment import Appointment
 from app.models.medical_record import MedicalRecord
 from app.models.prescription import Prescription
 from app.models.lab_result import LabResult
+from app.models.user import User
 
 from app.fhir.patient import FHIRPatient
+from app.core.authorization import require_role
+from app.core.patient_authorization import (
+    authorize_patient_access
+)
+from app.core.dependencies import get_current_user
+from app.core.patient_authorization import (
+    authorize_patient_access,
+    authorize_patient_write_access
+)
+
+
 
 from app.fhir.observation import (
     FHIRObservation
@@ -58,10 +69,7 @@ from app.fhir.mapper import (
 
 router = APIRouter(
     prefix="/fhir",
-    tags=["FHIR"],
-    dependencies=[
-        Depends(get_current_user)
-    ]
+    tags=["FHIR"]
 )
 
 
@@ -108,19 +116,27 @@ def get_fhir_patient(
 
     national_id: str,
 
+    current_user: User = Depends(
+        get_current_user
+    ),
+
     db: Session = Depends(get_db)
 
 ):
 
-    patient = get_patient_by_national_id(
+    patient = authorize_patient_access(
+
         national_id,
+
+        current_user,
+
         db
+
     )
 
     return patient_to_fhir(
         patient
     )
-
 
 # ============================================================
 # POST FHIR PATIENT
@@ -133,6 +149,14 @@ def get_fhir_patient(
 def receive_fhir_patient(
 
     fhir_patient: FHIRPatient,
+
+    current_user: User = Depends(
+        require_role(
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
 
     db: Session = Depends(get_db)
 
@@ -152,10 +176,11 @@ def receive_fhir_patient(
         fhir_patient.identifier[0].value
     )
 
-    patient = get_patient_by_national_id(
-        national_id,
-        db
-    )
+    patient = authorize_patient_write_access(
+    national_id,
+    current_user,
+    db
+)
 
     patient_data = fhir_to_patient_data(
         fhir_patient
@@ -193,14 +218,24 @@ def get_patient_bundle(
 
     national_id: str,
 
+    current_user: User = Depends(
+        require_role(
+            "PATIENT",
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
+
     db: Session = Depends(get_db)
 
 ):
 
-    patient = get_patient_by_national_id(
-        national_id,
-        db
-    )
+    patient = authorize_patient_access(
+    national_id,
+    current_user,
+    db
+)
 
     # ========================================================
     # INTERNAL ID
@@ -341,13 +376,23 @@ def get_patient_observations(
 
     national_id: str,
 
+    current_user: User = Depends(
+        require_role(
+            "PATIENT",
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
+
     db: Session = Depends(get_db)
 
 ):
 
-    patient = get_patient_by_national_id(
-        national_id,
-        db
+    patient = authorize_patient_access(
+    national_id,
+    current_user,
+    db
     )
 
     results = (
@@ -385,9 +430,15 @@ def create_fhir_observation(
 
     observation: FHIRObservation,
 
-    db: Session = Depends(
-        get_db
-    )
+    current_user: User = Depends(
+        require_role(
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
+
+    db: Session = Depends(get_db)
 
 ):
 
@@ -563,6 +614,15 @@ def get_patient_medical_records(
 
     national_id: str,
 
+    current_user: User = Depends(
+        require_role(
+            "PATIENT",
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
+
     db: Session = Depends(get_db)
 
 ):
@@ -606,6 +666,14 @@ def get_patient_medical_records(
 def create_fhir_medical_record(
 
     record: FHIRMedicalRecord,
+
+    current_user: User = Depends(
+        require_role(
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
 
     db: Session = Depends(get_db)
 
@@ -681,6 +749,15 @@ def get_patient_appointments(
 
     national_id: str,
 
+    current_user: User = Depends(
+        require_role(
+            "PATIENT",
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
+
     db: Session = Depends(get_db)
 
 ):
@@ -724,6 +801,14 @@ def get_patient_appointments(
 def create_fhir_appointment(
 
     appointment: FHIRAppointment,
+
+    current_user: User = Depends(
+        require_role(
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
 
     db: Session = Depends(get_db)
 
@@ -803,9 +888,18 @@ def get_patient_prescriptions(
 
     national_id: str,
 
+    current_user: User = Depends(
+        require_role(
+            "PATIENT",
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
+
     db: Session = Depends(get_db)
 
-):
+):  
 
     patient = get_patient_by_national_id(
         national_id,
@@ -847,9 +941,17 @@ def create_fhir_prescription(
 
     prescription: FHIRMedicationRequest,
 
+    current_user: User = Depends(
+        require_role(
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
+
     db: Session = Depends(get_db)
 
-):
+): 
 
     if prescription.resourceType != (
         "MedicationRequest"

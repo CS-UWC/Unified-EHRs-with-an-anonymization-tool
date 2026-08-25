@@ -80,8 +80,9 @@ def register_user(
 
         email=user.email,
 
-        password_hash=hashed_password
+        password_hash=hashed_password,
 
+        role="PATIENT"
     )
 
     new_patient = Patient()
@@ -161,11 +162,10 @@ def login_user(
         )
 
     access_token = create_access_token(
-
         data={
-            "sub": existing_user.email
+            "sub": existing_user.email,
+            "role": existing_user.role
         }
-
     )
 
     return {
