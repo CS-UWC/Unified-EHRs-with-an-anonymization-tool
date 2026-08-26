@@ -518,16 +518,10 @@ def create_fhir_observation(
     # Find patient using NATIONAL ID
     # --------------------------------------------------------
 
-    patient = (
-
-        db.query(Patient)
-
-        .filter(
-            Patient.national_id == national_id
-        )
-
-        .first()
-
+    patient = authorize_patient_write_access(
+        data["national_id"],
+        current_user,
+        db
     )
 
     if not patient:
@@ -627,10 +621,11 @@ def get_patient_medical_records(
 
 ):
 
-    patient = get_patient_by_national_id(
-        national_id,
-        db
-    )
+    patient = authorize_patient_access(
+    national_id,
+    current_user,
+    db
+)
 
     records = (
 
@@ -701,8 +696,9 @@ def create_fhir_medical_record(
             detail=str(exc)
         )
 
-    patient = get_patient_by_national_id(
+    patient = authorize_patient_write_access(
         data["national_id"],
+        current_user,
         db
     )
 
@@ -762,10 +758,11 @@ def get_patient_appointments(
 
 ):
 
-    patient = get_patient_by_national_id(
-        national_id,
-        db
-    )
+    patient = authorize_patient_access(
+    national_id,
+    current_user,
+    db
+)
 
     appointments = (
 
@@ -838,6 +835,7 @@ def create_fhir_appointment(
 
     patient = get_patient_by_national_id(
         data["national_id"],
+        current_user,
         db
     )
 
@@ -901,10 +899,11 @@ def get_patient_prescriptions(
 
 ):  
 
-    patient = get_patient_by_national_id(
-        national_id,
-        db
-    )
+    patient = authorize_patient_access(
+    national_id,
+    current_user,
+    db
+)
 
     prescriptions = (
 
@@ -980,6 +979,7 @@ def create_fhir_prescription(
 
     patient = get_patient_by_national_id(
         data["national_id"],
+        current_user,
         db
     )
 
