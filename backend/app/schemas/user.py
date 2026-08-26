@@ -34,6 +34,8 @@ class UserResponse(BaseModel):
 
     email: EmailStr
 
+    role: str
+
     class Config:
 
         from_attributes = True

@@ -175,3 +175,91 @@ def login_user(
         "token_type": "bearer"
 
     }
+
+# ============================================================
+# DEVELOPMENT TEST EXTERNAL SYSTEM
+# ============================================================
+
+@router.post(
+    "/create-test-external-system",
+    response_model=UserResponse
+)
+def create_test_external_system(
+
+    db: Session = Depends(get_db)
+
+):
+
+    test_email = "external@test.com"
+
+    # --------------------------------------------------------
+    # Check whether the test external system already exists
+    # --------------------------------------------------------
+
+    existing_user = (
+
+        db.query(User)
+
+        .filter(
+            User.email == test_email
+        )
+
+        .first()
+
+    )
+
+    if existing_user:
+
+        return existing_user
+
+    # --------------------------------------------------------
+    # Create the external-system user
+    # --------------------------------------------------------
+
+    hashed_password = hash_password(
+        "TestPassword123"
+    )
+
+    external_user = User(
+
+        first_name="Test",
+
+        last_name="External System",
+
+        email=test_email,
+
+        password_hash=hashed_password,
+
+        role="EXTERNAL_SYSTEM"
+
+    )
+
+    # --------------------------------------------------------
+    # IMPORTANT:
+    #
+    # We do NOT create a Patient profile for an
+    # EXTERNAL_SYSTEM user.
+    # --------------------------------------------------------
+
+    db.add(
+        external_user
+    )
+
+    try:
+
+        db.commit()
+
+        db.refresh(
+            external_user
+        )
+
+    except Exception:
+
+        db.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail="Could not create test external system"
+        )
+
+    return external_user
