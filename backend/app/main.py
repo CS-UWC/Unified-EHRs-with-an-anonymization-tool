@@ -14,6 +14,8 @@ from app.api.prescriptions import (router as prescription_router)
 from app.api.lab_results import (router as lab_result_router)
 from app.api.fhir import (router as fhir_router)
 from app.api.access_requests import router as access_request_router
+from app.api.research import router as research_router
+from app.api import anonymization
 
 # Import models
 from app.models import User
@@ -35,6 +37,8 @@ app.include_router(prescription_router)
 app.include_router(lab_result_router)
 app.include_router(fhir_router)
 app.include_router(access_request_router)
+app.include_router(research_router)
+app.include_router(anonymization.router)
 
 @app.get("/")
 def home():

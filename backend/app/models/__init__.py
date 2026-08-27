@@ -9,3 +9,4 @@ from app.models.external_system_permission import (
     ExternalSystemPermission
 )
 from app.models.access_request import AccessRequest
+from app.models.research_dataset import ResearchDataset
