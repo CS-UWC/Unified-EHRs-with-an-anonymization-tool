@@ -13,7 +13,6 @@ from fastapi import HTTPException
 
 from sqlalchemy.orm import Session
 
-
 from app.dependencies import get_db
 
 from app.models.patient import Patient
@@ -24,33 +23,19 @@ from app.models.lab_result import LabResult
 from app.models.user import User
 
 from app.fhir.patient import FHIRPatient
+
 from app.core.authorization import require_role
-from app.core.patient_authorization import (
-    authorize_patient_access
-)
 from app.core.dependencies import get_current_user
+
 from app.core.patient_authorization import (
     authorize_patient_access,
     authorize_patient_write_access
 )
 
-
-
-from app.fhir.observation import (
-    FHIRObservation
-)
-
-from app.fhir.appointment import (
-    FHIRAppointment
-)
-
-from app.fhir.medical_record import (
-    FHIRMedicalRecord
-)
-
-from app.fhir.medication import (
-    FHIRMedicationRequest
-)
+from app.fhir.observation import FHIRObservation
+from app.fhir.appointment import FHIRAppointment
+from app.fhir.medical_record import FHIRMedicalRecord
+from app.fhir.medication import FHIRMedicationRequest
 
 from app.fhir.mapper import (
     patient_to_fhir,
@@ -125,18 +110,15 @@ def get_fhir_patient(
 ):
 
     patient = authorize_patient_access(
-
         national_id,
-
         current_user,
-
         db
-
     )
 
     return patient_to_fhir(
         patient
     )
+
 
 # ============================================================
 # POST FHIR PATIENT
@@ -177,10 +159,10 @@ def receive_fhir_patient(
     )
 
     patient = authorize_patient_write_access(
-    national_id,
-    current_user,
-    db
-)
+        national_id,
+        current_user,
+        db
+    )
 
     patient_data = fhir_to_patient_data(
         fhir_patient
@@ -232,10 +214,10 @@ def get_patient_bundle(
 ):
 
     patient = authorize_patient_access(
-    national_id,
-    current_user,
-    db
-)
+        national_id,
+        current_user,
+        db
+    )
 
     # ========================================================
     # INTERNAL ID
@@ -390,9 +372,9 @@ def get_patient_observations(
 ):
 
     patient = authorize_patient_access(
-    national_id,
-    current_user,
-    db
+        national_id,
+        current_user,
+        db
     )
 
     results = (
@@ -419,7 +401,7 @@ def get_patient_observations(
 
 
 # ============================================================
-# Receive FHIR Observation- POST OBSERVATION
+# POST FHIR OBSERVATION
 # ============================================================
 
 @router.post(
@@ -449,13 +431,10 @@ def create_fhir_observation(
     if observation.resourceType != "Observation":
 
         raise HTTPException(
-
             status_code=400,
-
             detail=(
                 "Resource must be an Observation."
             )
-
         )
 
     # --------------------------------------------------------
@@ -465,61 +444,54 @@ def create_fhir_observation(
     if not observation.subject:
 
         raise HTTPException(
-
             status_code=400,
-
             detail=(
                 "Observation must contain "
                 "a patient reference."
             )
-
         )
 
     # --------------------------------------------------------
-    # Extract national ID
+    # Extract NATIONAL ID
     # --------------------------------------------------------
 
     try:
 
-        national_id = (
-            extract_patient_national_id(
-                observation.subject
-            )
+        national_id = extract_patient_national_id(
+            observation.subject
         )
 
     except ValueError as error:
 
         raise HTTPException(
-
             status_code=400,
-
             detail=str(error)
-
         )
 
     # --------------------------------------------------------
-    # Validate national ID
+    # Validate NATIONAL ID
     # --------------------------------------------------------
 
     if not national_id:
 
         raise HTTPException(
-
             status_code=400,
-
             detail=(
                 "Invalid patient reference. "
                 "Use Patient/{national_id}."
             )
-
         )
 
     # --------------------------------------------------------
     # Find patient using NATIONAL ID
+    #
+    # IMPORTANT:
+    # The external system supplies the national ID.
+    # The internal patient.id is resolved by the backend.
     # --------------------------------------------------------
 
     patient = authorize_patient_write_access(
-        data["national_id"],
+        national_id,
         current_user,
         db
     )
@@ -527,11 +499,8 @@ def create_fhir_observation(
     if not patient:
 
         raise HTTPException(
-
             status_code=404,
-
             detail="Patient not found."
-
         )
 
     # --------------------------------------------------------
@@ -622,10 +591,10 @@ def get_patient_medical_records(
 ):
 
     patient = authorize_patient_access(
-    national_id,
-    current_user,
-    db
-)
+        national_id,
+        current_user,
+        db
+    )
 
     records = (
 
@@ -759,10 +728,10 @@ def get_patient_appointments(
 ):
 
     patient = authorize_patient_access(
-    national_id,
-    current_user,
-    db
-)
+        national_id,
+        current_user,
+        db
+    )
 
     appointments = (
 
@@ -833,7 +802,12 @@ def create_fhir_appointment(
             detail=str(exc)
         )
 
-    patient = get_patient_by_national_id(
+    # --------------------------------------------------------
+    # Resolve patient using NATIONAL ID and enforce
+    # patient-controlled write authorization.
+    # --------------------------------------------------------
+
+    patient = authorize_patient_write_access(
         data["national_id"],
         current_user,
         db
@@ -897,13 +871,13 @@ def get_patient_prescriptions(
 
     db: Session = Depends(get_db)
 
-):  
+):
 
     patient = authorize_patient_access(
-    national_id,
-    current_user,
-    db
-)
+        national_id,
+        current_user,
+        db
+    )
 
     prescriptions = (
 
@@ -950,11 +924,9 @@ def create_fhir_prescription(
 
     db: Session = Depends(get_db)
 
-): 
+):
 
-    if prescription.resourceType != (
-        "MedicationRequest"
-    ):
+    if prescription.resourceType != "MedicationRequest":
 
         raise HTTPException(
             status_code=400,
@@ -977,7 +949,12 @@ def create_fhir_prescription(
             detail=str(exc)
         )
 
-    patient = get_patient_by_national_id(
+    # --------------------------------------------------------
+    # Resolve patient using NATIONAL ID and enforce
+    # patient-controlled write authorization.
+    # --------------------------------------------------------
+
+    patient = authorize_patient_write_access(
         data["national_id"],
         current_user,
         db
