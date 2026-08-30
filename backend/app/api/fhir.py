@@ -6,6 +6,13 @@ External systems identify patients using NATIONAL ID.
 Internal patient.id is NEVER exposed as the
 external interoperability identifier.
 """
+import os
+import uuid
+
+from pathlib import Path
+
+from fastapi import File
+from fastapi import UploadFile
 
 from fastapi import APIRouter
 from fastapi import Depends
@@ -22,6 +29,7 @@ from app.models.medical_record import MedicalRecord
 from app.models.prescription import Prescription
 from app.models.lab_result import LabResult
 from app.models.user import User
+from app.models.medical_image import MedicalImage
 
 from app.fhir.patient import FHIRPatient
 from app.core.authorization import require_role
@@ -33,8 +41,6 @@ from app.core.patient_authorization import (
     authorize_patient_access,
     authorize_patient_write_access
 )
-
-
 
 from app.fhir.observation import (
     FHIRObservation
@@ -66,6 +72,18 @@ from app.fhir.mapper import (
     fhir_to_medical_record_data
 )
 
+from app.fhir.imaging import (
+    FHIRDocumentReference
+)
+
+UPLOAD_DIR = Path(
+    "uploads/medical_images"
+)
+
+UPLOAD_DIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
 
 router = APIRouter(
     prefix="/fhir",
@@ -1025,4 +1043,361 @@ def create_fhir_prescription(
 
     return prescription_to_fhir(
         new_prescription
+    )
+#=====================================================================================================
+#ENDPOINT TO UPLOAD MEDICAL SCANS (IMAGES) AND RETURN FHIR DOCUMENTREFERENCE RESOURCE
+#======================================================================================================
+@router.post(
+    "/patient/{national_id}/scan",
+    response_model=FHIRDocumentReference
+)
+async def upload_medical_scan(
+
+    national_id: str,
+
+    scan_type: str | None = None,
+
+    description: str | None = None,
+
+    file: UploadFile = File(...),
+
+    current_user: User = Depends(
+        require_role(
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
+
+    db: Session = Depends(get_db)
+
+):
+
+    # ========================================================
+    # AUTHORIZE PATIENT WRITE ACCESS
+    # ========================================================
+
+    patient = authorize_patient_write_access(
+        national_id,
+        current_user,
+        db
+    )
+
+    # ========================================================
+    # VALIDATE FILE TYPE
+    # ========================================================
+
+    allowed_types = {
+        "image/jpeg",
+        "image/png",
+        "image/dicom"
+    }
+
+    if file.content_type not in allowed_types:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Unsupported image format. "
+                "Allowed formats are JPEG, PNG, and DICOM."
+            )
+        )
+
+    # ========================================================
+    # GENERATE SAFE FILE NAME
+    # ========================================================
+
+    original_name = (
+        file.filename
+        or "medical_scan"
+    )
+
+    extension = Path(
+        original_name
+    ).suffix.lower()
+
+    generated_name = (
+        f"{uuid.uuid4()}{extension}"
+    )
+
+    file_path = (
+        UPLOAD_DIR /
+        generated_name
+    )
+
+    # ========================================================
+    # SAVE IMAGE
+    # ========================================================
+
+    try:
+
+        with open(
+            file_path,
+            "wb"
+        ) as buffer:
+
+            while True:
+
+                chunk = await file.read(
+                    1024 * 1024
+                )
+
+                if not chunk:
+                    break
+
+                buffer.write(chunk)
+
+    except Exception:
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save medical image."
+        )
+
+    # ========================================================
+    # SAVE DATABASE RECORD
+    # ========================================================
+
+    new_image = MedicalImage(
+
+        patient_id=patient.id,
+
+        file_name=original_name,
+
+        file_path=str(
+            file_path
+        ),
+
+        content_type=file.content_type,
+
+        scan_type=scan_type,
+
+        description=description
+
+    )
+
+    db.add(
+        new_image
+    )
+
+    db.commit()
+
+    db.refresh(
+        new_image
+    )
+
+    # ========================================================
+    # RETURN FHIR RESOURCE
+    # ========================================================
+
+    return FHIRDocumentReference(
+
+        id=str(
+            new_image.id
+        ),
+
+        subject={
+            "reference": (
+                f"Patient/{national_id}"
+            )
+        },
+
+        description=description,
+
+        content=[
+
+            {
+                "attachment": {
+
+                    "contentType": (
+                        file.content_type
+                    ),
+
+                    "url": (
+                        f"/uploads/medical_images/"
+                        f"{generated_name}"
+                    ),
+
+                    "title": original_name
+
+                }
+
+            }
+
+        ]
+
+    )
+
+@router.get(
+    "/patient/{national_id}/scans",
+    response_model=list[FHIRDocumentReference]
+)
+def get_patient_scans(
+
+    national_id: str,
+
+    current_user: User = Depends(
+        require_role(
+            "PATIENT",
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
+
+    db: Session = Depends(get_db)
+
+):
+
+    # ========================================================
+    # AUTHORIZE READ ACCESS
+    # ========================================================
+
+    patient = authorize_patient_access(
+        national_id,
+        current_user,
+        db
+    )
+
+    # ========================================================
+    # GET PATIENT SCANS
+    # ========================================================
+
+    scans = (
+        db.query(MedicalImage)
+        .filter(
+            MedicalImage.patient_id == patient.id
+        )
+        .all()
+    )
+
+    # ========================================================
+    # CONVERT TO FHIR
+    # ========================================================
+
+    resources = []
+
+    for scan in scans:
+
+        resources.append(
+
+            FHIRDocumentReference(
+
+                id=str(
+                    scan.id
+                ),
+
+                subject={
+                    "reference":
+                        f"Patient/{national_id}"
+                },
+
+                description=(
+                    scan.description
+                ),
+
+                content=[
+
+                    {
+                        "attachment": {
+
+                            "contentType":
+                                scan.content_type,
+
+                            "url":
+                                f"/{scan.file_path}",
+
+                            "title":
+                                scan.file_name
+
+                        }
+                    }
+
+                ]
+
+            )
+
+        )
+
+    return resources
+
+@router.get(
+    "/patient/{national_id}/scans/{scan_id}",
+    response_model=FHIRDocumentReference
+)
+def get_patient_scan(
+
+    national_id: str,
+
+    scan_id: int,
+
+    current_user: User = Depends(
+        require_role(
+            "PATIENT",
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
+
+    db: Session = Depends(get_db)
+
+):
+
+    patient = authorize_patient_access(
+        national_id,
+        current_user,
+        db
+    )
+
+    scan = (
+        db.query(MedicalImage)
+        .filter(
+            MedicalImage.id == scan_id,
+            MedicalImage.patient_id == patient.id
+        )
+        .first()
+    )
+
+    if not scan:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Medical scan not found."
+        )
+
+    return FHIRDocumentReference(
+
+        id=str(
+            scan.id
+        ),
+
+        subject={
+            "reference":
+                f"Patient/{national_id}"
+        },
+
+        description=(
+            scan.description
+        ),
+
+        content=[
+
+            {
+                "attachment": {
+
+                    "contentType":
+                        scan.content_type,
+
+                    "url":
+                        f"/{scan.file_path}",
+
+                    "title":
+                        scan.file_name
+
+                }
+            }
+
+        ]
+
     )

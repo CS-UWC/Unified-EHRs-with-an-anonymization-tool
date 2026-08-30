@@ -114,3 +114,8 @@ class Patient(Base):
         "MedicalRecord",
         back_populates="patient"
     )
+
+    medical_images = relationship(
+        "MedicalImage",
+        back_populates="patient"
+    )

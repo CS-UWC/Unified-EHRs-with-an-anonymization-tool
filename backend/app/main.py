@@ -20,6 +20,9 @@ from app.api import anonymization
 # Import models
 from app.models import User
 from app.models import Patient
+from app.models.medical_image import MedicalImage
+
+from fastapi.staticfiles import StaticFiles
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)
@@ -27,6 +30,14 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="Unified EHR API",
     version="1.0.0"
+)
+
+app.mount(
+    "/uploads",
+    StaticFiles(
+        directory="uploads"
+    ),
+    name="uploads"
 )
 
 app.include_router(auth_router)
