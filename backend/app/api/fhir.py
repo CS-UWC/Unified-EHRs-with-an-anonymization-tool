@@ -57,6 +57,7 @@ from app.fhir.medication import (
     FHIRMedicationRequest
 )
 
+
 from app.fhir.mapper import (
     patient_to_fhir,
     appointment_to_fhir,
