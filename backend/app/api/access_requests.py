@@ -205,10 +205,6 @@ def create_access_request(
     }
 
 
-# ============================================================
-# PATIENT VIEW PENDING REQUESTS
-# ============================================================
-
 @router.get("/")
 def get_my_access_requests(
 
@@ -245,7 +241,10 @@ def get_my_access_requests(
         db.query(AccessRequest)
         .filter(
             AccessRequest.patient_id
-            == current_user.patient.id
+            == current_user.patient.id,
+
+            # Do not show revoked permissions
+            AccessRequest.status != "REVOKED"
         )
         .order_by(
             AccessRequest.created_at.desc()
@@ -618,6 +617,45 @@ def revoke_external_system_access(
     permission.can_write = False
 
     permission.revoked_at = datetime.utcnow()
+
+    # --------------------------------------------------------
+    # Mark the corresponding access request as REVOKED
+    #
+    # We keep the request in the database for audit purposes,
+    # but it will no longer appear in GET /access-requests/.
+    # --------------------------------------------------------
+
+    access_request = (
+        db.query(AccessRequest)
+        .filter(
+
+            AccessRequest.patient_id
+            == patient.id,
+
+            AccessRequest.external_system_id
+            == external_system_id,
+
+            AccessRequest.status
+            == "APPROVED"
+
+        )
+        .order_by(
+            AccessRequest.responded_at.desc()
+        )
+        .first()
+    )
+
+    if access_request:
+
+        access_request.status = "REVOKED"
+
+        access_request.responded_at = (
+            datetime.utcnow()
+        )
+
+    # --------------------------------------------------------
+    # Save changes
+    # --------------------------------------------------------
 
     db.commit()
 
