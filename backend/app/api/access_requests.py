@@ -634,7 +634,7 @@ def revoke_external_system_access(
             permission.external_system_id,
 
         "patient_id":
-            permission.patient_id,
+            permission.patient.national_id,
 
         "can_read":
             permission.can_read,
