@@ -40,7 +40,7 @@ from app.core.patient_authorization import (
     authorize_patient_write_access
 )
 
-<<<<<<< HEAD
+
 from app.fhir.observation import (
     FHIRObservation
 )
@@ -56,12 +56,6 @@ from app.fhir.medical_record import (
 from app.fhir.medication import (
     FHIRMedicationRequest
 )
-=======
-from app.fhir.observation import FHIRObservation
-from app.fhir.appointment import FHIRAppointment
-from app.fhir.medical_record import FHIRMedicalRecord
-from app.fhir.medication import FHIRMedicationRequest
->>>>>>> 52f20e51952f38336438ebdedd8cc7d5e5f86f3d
 
 from app.fhir.mapper import (
     patient_to_fhir,
