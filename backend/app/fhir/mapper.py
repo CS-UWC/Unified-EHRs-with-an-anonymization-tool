@@ -12,6 +12,7 @@ from app.models.appointment import Appointment
 from app.models.prescription import Prescription
 from app.models.medical_record import MedicalRecord
 from app.models.lab_result import LabResult
+from app.models.medical_image import MedicalImage
 
 from app.fhir.reference import (
     FHIRReference,
@@ -46,6 +47,9 @@ from app.fhir.bundle import (
     BundleEntry
 )
 
+from app.fhir.imaging import (
+    FHIRDocumentReference
+)
 
 # ============================================================
 # CONSTANTS

@@ -64,6 +64,7 @@ from app.fhir.mapper import (
     medical_record_to_fhir,
     prescription_to_fhir,
     lab_result_to_fhir,
+    medical_image_to_fhir,
     build_bundle,
     fhir_to_patient_data,
     extract_patient_national_id,
@@ -371,6 +372,31 @@ def get_patient_bundle(
         resources.append(
             lab_result_to_fhir(
                 observation
+            )
+        )
+
+        # ========================================================
+    # MEDICAL SCANS
+    # ========================================================
+
+    scans = (
+
+        db.query(MedicalImage)
+
+        .filter(
+            MedicalImage.patient_id
+            == internal_patient_id
+        )
+
+        .all()
+
+    )
+
+    for scan in scans:
+
+        resources.append(
+            medical_image_to_fhir(
+                scan
             )
         )
 
