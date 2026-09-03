@@ -525,3 +525,124 @@ def reject_access_request(
         "request_id": request.id,
         "status": request.status
     }
+
+# ============================================================
+# PATIENT REVOKES APPROVED ACCESS
+# ============================================================
+
+@router.delete(
+    "/permission/{external_system_id}"
+)
+def revoke_external_system_access(
+
+    external_system_id: int,
+
+    current_user: User = Depends(
+        get_current_user
+    ),
+
+    db: Session = Depends(get_db)
+
+):
+
+    # --------------------------------------------------------
+    # Only patients can revoke external-system access
+    # --------------------------------------------------------
+
+    if current_user.role != "PATIENT":
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Only patients can revoke "
+                "external-system access."
+            )
+        )
+
+    # --------------------------------------------------------
+    # Patient must have a patient profile
+    # --------------------------------------------------------
+
+    if current_user.patient is None:
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient profile not found."
+        )
+
+    patient = current_user.patient
+
+    # --------------------------------------------------------
+    # Find active permission belonging to this patient
+    # --------------------------------------------------------
+
+    permission = (
+        db.query(
+            ExternalSystemPermission
+        )
+        .filter(
+
+            ExternalSystemPermission.external_system_id
+            == external_system_id,
+
+            ExternalSystemPermission.patient_id
+            == patient.id,
+
+            ExternalSystemPermission.revoked_at
+            .is_(None)
+
+        )
+        .first()
+    )
+
+    # --------------------------------------------------------
+    # No active permission
+    # --------------------------------------------------------
+
+    if not permission:
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "No active permission exists "
+                "for this external system."
+            )
+        )
+
+    # --------------------------------------------------------
+    # Revoke permission
+    # --------------------------------------------------------
+
+    permission.can_read = False
+
+    permission.can_write = False
+
+    permission.revoked_at = datetime.utcnow()
+
+    db.commit()
+
+    db.refresh(permission)
+
+    return {
+
+        "message": (
+            "External system access "
+            "has been revoked."
+        ),
+
+        "external_system_id":
+            permission.external_system_id,
+
+        "patient_id":
+            permission.patient_id,
+
+        "can_read":
+            permission.can_read,
+
+        "can_write":
+            permission.can_write,
+
+        "revoked_at":
+            permission.revoked_at
+
+    }
