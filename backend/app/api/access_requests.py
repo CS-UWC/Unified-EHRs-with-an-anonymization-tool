@@ -205,6 +205,10 @@ def create_access_request(
     }
 
 
+# ============================================================
+# PATIENT VIEW PENDING REQUESTS
+# ============================================================
+
 @router.get("/")
 def get_my_access_requests(
 
