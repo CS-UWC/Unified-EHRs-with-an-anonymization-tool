@@ -535,6 +535,42 @@ def fhir_to_medical_record_data(
 
     }
 
+#==============================================================
+# MEDICAL SCANS -> FHIR DOCUMENT REFERENCE
+#==============================================================
+def medical_image_to_fhir(
+    image: MedicalImage
+):
+    return FHIRDocumentReference(
+
+        id=str(image.id),
+
+        subject={
+            "reference":
+                f"Patient/{image.patient.national_id}"
+        },
+
+        description=image.description,
+
+        content=[
+            {
+                "attachment": {
+
+                    "contentType":
+                        image.content_type,
+
+                    "url":
+                        f"/fhir/patient/"
+                        f"{image.patient.national_id}/"
+                        f"scans/{image.id}",
+
+                    "title":
+                        image.file_name
+                }
+            }
+        ]
+    )
+
 
 # ============================================================
 # LAB RESULT -> FHIR OBSERVATION
