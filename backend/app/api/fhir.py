@@ -77,6 +77,12 @@ from app.fhir.imaging import (
     FHIRDocumentReference
 )
 
+from app.services.research_data_service import (
+    create_research_data,
+    create_research_data_from_observation,
+    create_research_data_from_prescription
+)
+
 UPLOAD_DIR = Path(
     "uploads/medical_images"
 )
@@ -609,6 +615,33 @@ def create_fhir_observation(
         new_result
     )
 
+    # --------------------------------------------------------
+    # Create anonymised research copy
+    # --------------------------------------------------------
+
+    create_research_data_from_observation(
+
+        db=db,
+
+        patient=patient,
+
+        test_name=observation.code,
+
+        result=observation.value,
+
+        status=observation.status,
+
+        laboratory_name=(
+            observation.laboratory
+            if observation.laboratory
+            else "External Laboratory"
+        )
+    )
+
+    # --------------------------------------------------------
+    # Commit clinical + research data together
+    # --------------------------------------------------------
+
     db.commit()
 
     db.refresh(
@@ -749,6 +782,24 @@ def create_fhir_medical_record(
     db.add(
         new_record
     )
+
+    # --------------------------------------------------------
+    # Create anonymised research copy
+    # --------------------------------------------------------
+
+    create_research_data(
+
+        db=db,
+
+        patient=patient,
+
+        medical_record=new_record
+
+    )
+
+    # --------------------------------------------------------
+    # Commit both records together
+    # --------------------------------------------------------
 
     db.commit()
 
@@ -1052,6 +1103,37 @@ def create_fhir_prescription(
     db.add(
         new_prescription
     )
+
+    # --------------------------------------------------------
+    # Create anonymised research copy
+    # --------------------------------------------------------
+
+    create_research_data_from_prescription(
+
+        db=db,
+
+        patient=patient,
+
+        medicine_name=(
+            data["medicine_name"]
+        ),
+
+        dosage=(
+            data["dosage"]
+        ),
+
+        frequency=(
+            data["frequency"]
+        ),
+
+        duration=(
+            data["duration"]
+        )
+    )
+
+    # --------------------------------------------------------
+    # Commit clinical + research data together
+    # --------------------------------------------------------
 
     db.commit()
 
