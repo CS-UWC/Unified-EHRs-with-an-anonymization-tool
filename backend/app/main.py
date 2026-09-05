@@ -18,8 +18,6 @@ from app.api.access_requests import router as access_request_router
 =======
 from app.api import research_data
 
->>>>>>> 38ababd (Doing automatic anonymization when external systems POST medical data)
-
 # Import models
 from app.models import User
 from app.models import Patient
