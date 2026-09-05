@@ -16,6 +16,7 @@ from app.api.fhir import (router as fhir_router)
 from app.api.access_requests import router as access_request_router
 from app.api import research_data
 
+
 # Import models
 from app.models import User
 from app.models import Patient
@@ -47,8 +48,6 @@ app.include_router(prescription_router)
 app.include_router(lab_result_router)
 app.include_router(fhir_router)
 app.include_router(access_request_router)
-<<<<<<< HEAD
-=======
 app.include_router(research_data.router)
 
 
