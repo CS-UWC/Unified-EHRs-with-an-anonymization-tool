@@ -14,8 +14,6 @@ from app.api.prescriptions import (router as prescription_router)
 from app.api.lab_results import (router as lab_result_router)
 from app.api.fhir import (router as fhir_router)
 from app.api.access_requests import router as access_request_router
-<<<<<<< HEAD
-=======
 from app.api import research_data
 
 # Import models
@@ -23,7 +21,6 @@ from app.models import User
 from app.models import Patient
 from app.models.medical_image import MedicalImage
 from app.models.research_data import ResearchData
-
 from fastapi.staticfiles import StaticFiles
 
 # Create all database tables
@@ -53,7 +50,7 @@ app.include_router(access_request_router)
 <<<<<<< HEAD
 =======
 app.include_router(research_data.router)
->>>>>>> 38ababd (Doing automatic anonymization when external systems POST medical data)
+
 
 @app.get("/")
 def home():
