@@ -1,235 +1,138 @@
-/**
- * Dashboard Page
- *
- * This page represents the patient dashboard
- * for the Unified Electronic Health Record System.
- *
- * Features:
- * - Sidebar navigation
- * - Health summary cards
- * - Medical records table
- * - Privacy and access management
- */
+import { Link } from "react-router-dom";
+import {
+  FaArrowRight,
+  FaCalendarCheck,
+  FaChevronRight,
+  FaFileMedical,
+  FaShieldAlt,
+  FaUserMd,
+} from "react-icons/fa";
+import AppShell from "../components/AppShell";
+import { APPOINTMENTS, LAB_RESULTS, PRESCRIPTIONS } from "../demoData";
 
-const Dashboard = () => {
-
+export default function Dashboard() {
   return (
+    <AppShell
+      role="PATIENT"
+      title="Good afternoon, Eyethu"
+      subtitle="Here is your unified healthcare overview."
+    >
+      <div className="demo-banner">
+        <FaShieldAlt />
+        <div>
+          <strong>Patient-controlled access</strong>
+          <span>You decide which external healthcare systems can read or write your health information.</span>
+        </div>
+        <Link to="/privacy">Manage access <FaArrowRight /></Link>
+      </div>
 
-    /* ===================================================== */
-    /* MAIN DASHBOARD LAYOUT                                 */
-    /* ===================================================== */
-
-    <div className="dashboard">
-
-      {/* ===================================================== */}
-      {/* SIDEBAR NAVIGATION                                   */}
-      {/* ===================================================== */}
-
-      <aside className="sidebar">
-
-        {/* Sidebar Heading */}
-        <div className="sidebar-header">
-
-          <h2>SA EHRS</h2>
-
-          <p>Unified Healthcare</p>
-
+      <section className="hero-card">
+        <div>
+          <span className="section-label">HEALTH AT A GLANCE</span>
+          <h2>Your healthcare, connected.</h2>
+          <p>
+            Your records from different healthcare providers are brought
+            together in one secure patient portal.
+          </p>
+          <Link className="outline-button" to="/medical-history">
+            View medical history <FaArrowRight />
+          </Link>
         </div>
 
-        {/* Navigation Links */}
-        <nav className="sidebar-nav">
+        <div className="hero-stat">
+          <span>Next appointment</span>
+          <strong>14</strong>
+          <small>May 2026 • 10:00 AM</small>
+        </div>
+      </section>
 
-          <a href="#">Dashboard</a>
+      <div className="stat-grid">
+        <div className="stat-card">
+          <div className="stat-icon"><FaFileMedical /></div>
+          <div><span>Medical records</span><strong>12</strong></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon"><FaCalendarCheck /></div>
+          <div><span>Appointments</span><strong>{APPOINTMENTS.length}</strong></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon"><FaFileMedical /></div>
+          <div><span>Active prescriptions</span><strong>{PRESCRIPTIONS.length}</strong></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon"><FaUserMd /></div>
+          <div><span>Connected providers</span><strong>4</strong></div>
+        </div>
+      </div>
 
-          <a href="/medical-history">
-            Medical History
-          </a>
+      <div className="dashboard-grid">
+        <section className="content-card">
+          <div className="card-heading">
+            <div>
+              <span className="section-label">UPCOMING</span>
+              <h3>Next appointment</h3>
+            </div>
+            <Link to="/appointments">View all <FaChevronRight /></Link>
+          </div>
 
-          <a href="#">Appointments</a>
+          <div className="appointment-highlight">
+            <div className="date-block">
+              <strong>14</strong>
+              <span>MAY</span>
+            </div>
+            <div className="appointment-info">
+              <strong>Follow-up consultation</strong>
+              <span>Dr. Smith • Groote Schuur Hospital</span>
+              <span>10:00 AM</span>
+            </div>
+            <span className="status-pill upcoming">Upcoming</span>
+          </div>
+        </section>
 
-          <a href="#">Prescriptions</a>
+        <section className="content-card">
+          <div className="card-heading">
+            <div>
+              <span className="section-label">RECENT</span>
+              <h3>Laboratory results</h3>
+            </div>
+            <Link to="/lab-results">View all <FaChevronRight /></Link>
+          </div>
 
-          <a href="#">Test Results</a>
+          <div className="compact-list">
+            {LAB_RESULTS.slice(0, 3).map((result) => (
+              <div className="list-row" key={`${result.test}-${result.date}`}>
+                <div>
+                  <strong>{result.test}</strong>
+                  <span>{result.facility}</span>
+                </div>
+                <div className="list-value">
+                  <strong>{result.result}</strong>
+                  <span>{result.date}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
 
-          <a href="#">Privacy & Access</a>
-
-          <a href="#">Logout</a>
-
-        </nav>
-
-      </aside>
-
-      {/* ===================================================== */}
-      {/* MAIN CONTENT AREA                                    */}
-      {/* ===================================================== */}
-
-      <main className="main-content">
-
-        {/* ===================================================== */}
-        {/* TOP BAR                                              */}
-        {/* ===================================================== */}
-
-        <div className="topbar">
-
-          {/* Welcome Message */}
+      <section className="content-card">
+        <div className="card-heading">
           <div>
-
-            <h1>Welcome Back, Eyethu</h1>
-
-            <p>
-              Here is your healthcare overview
-            </p>
-
+            <span className="section-label">ACCESS CONTROL</span>
+            <h3>Privacy & external access</h3>
           </div>
-
-          {/* Patient Profile Circle */}
-          <div className="profile-circle">
-
-            E
-
-          </div>
-
+          <Link to="/privacy">Manage permissions <FaArrowRight /></Link>
         </div>
 
-        {/* ===================================================== */}
-        {/* HEALTH SUMMARY CARDS                                 */}
-        {/* ===================================================== */}
-
-        <section className="summary-cards">
-
-          {/* Upcoming Appointment Card */}
-          <div className="summary-card">
-
-            <h3>Upcoming Appointment</h3>
-
-            <p>12 May 2026</p>
-
+        <div className="access-summary">
+          <div className="access-summary-icon"><FaShieldAlt /></div>
+          <div>
+            <strong>2 healthcare systems connected</strong>
+            <span>1 active permission • 1 request awaiting your decision</span>
           </div>
-
-          {/* Current Medication Card */}
-          <div className="summary-card">
-
-            <h3>Current Medication</h3>
-
-            <p>2 Active Prescriptions</p>
-
-          </div>
-
-          {/* Last Hospital Visit */}
-          <div className="summary-card">
-
-            <h3>Last Visit</h3>
-
-            <p>Groote Schuur Hospital</p>
-
-          </div>
-
-          {/* Medical Alerts */}
-          <div className="summary-card">
-
-            <h3>Medical Alerts</h3>
-
-            <p>No Active Alerts</p>
-
-          </div>
-
-        </section>
-
-        {/* ===================================================== */}
-        {/* RECENT MEDICAL RECORDS                               */}
-        {/* ===================================================== */}
-
-        <section className="records-section">
-
-          {/* Section Heading */}
-          <h2>Recent Medical Records</h2>
-
-          {/* Medical Records Table */}
-          <table>
-
-            {/* Table Header */}
-            <thead>
-
-            <tr>
-
-              <th>Date</th>
-
-              <th>Doctor</th>
-
-              <th>Diagnosis</th>
-
-              <th>Hospital</th>
-
-            </tr>
-
-            </thead>
-
-            {/* Table Body */}
-            <tbody>
-
-            <tr>
-
-              <td>01 May 2026</td>
-
-              <td>Dr. Smith</td>
-
-              <td>Hypertension</td>
-
-              <td>Tygerberg Hospital</td>
-
-            </tr>
-
-            <tr>
-
-              <td>15 April 2026</td>
-
-              <td>Dr. Adams</td>
-
-              <td>Routine Checkup</td>
-
-              <td>Netcare</td>
-
-            </tr>
-
-            </tbody>
-
-          </table>
-
-        </section>
-
-        {/* ===================================================== */}
-        {/* PRIVACY AND ACCESS SECTION                           */}
-        {/* ===================================================== */}
-
-        <section className="privacy-section">
-
-          {/* Section Heading */}
-          <h2>Privacy & Access</h2>
-
-          {/* Privacy Information Card */}
-          <div className="privacy-card">
-
-            <p>
-              ✔ Tygerberg Hospital has authorized access
-            </p>
-
-            <p>
-              ✔ Dr. Smith has authorized access
-            </p>
-
-            <p>
-              ✔ Research access is anonymized
-            </p>
-
-          </div>
-
-        </section>
-
-      </main>
-
-    </div>
+          <Link className="primary-button small-button" to="/privacy">Review requests</Link>
+        </div>
+      </section>
+    </AppShell>
   );
-};
-
-// Export dashboard component
-export default Dashboard;
+}

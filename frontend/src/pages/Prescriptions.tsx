@@ -1,96 +1,23 @@
-/**
- * Prescriptions Page
- *
- * This page allows patients to:
- * - View active prescriptions
- * - Monitor medication dosage
- * - Track prescribing healthcare providers
- *
- * This demonstrates centralized pharmaceutical
- * records within the Unified EHR system.
- */
+import { FaPills } from "react-icons/fa";
+import AppShell from "../components/AppShell";
+import { PRESCRIPTIONS } from "../demoData";
 
-const Prescriptions = () => {
-
+export default function Prescriptions() {
   return (
-
-    <div className="prescriptions-page">
-
-      {/* ===================================================== */}
-      {/* PAGE HEADER                                           */}
-      {/* ===================================================== */}
-
-      <div className="prescriptions-header">
-
-        <h1>Prescriptions</h1>
-
-        <p>
-          View medications prescribed by healthcare
-          professionals across South Africa.
-        </p>
-
+    <AppShell role="PATIENT" title="Prescriptions" subtitle="Your current medications and prescription history.">
+      <div className="medication-grid">
+        {PRESCRIPTIONS.map((item) => (
+          <div className="medication-card" key={item.medication}>
+            <div className="medication-icon"><FaPills /></div>
+            <div className="medication-body"><span className="status-pill active">{item.status}</span><h3>{item.medication}</h3><strong>{item.dosage} • {item.frequency}</strong><p>Prescribed by {item.doctor}</p><span>{item.duration}</span></div>
+          </div>
+        ))}
       </div>
 
-      {/* ===================================================== */}
-      {/* PRESCRIPTIONS TABLE                                   */}
-      {/* ===================================================== */}
-
-      <section className="medical-card">
-
-        <h2>Current Medications</h2>
-
-        <table>
-
-          <thead>
-
-          <tr>
-
-            <th>Medication</th>
-
-            <th>Dosage</th>
-
-            <th>Doctor</th>
-
-            <th>Duration</th>
-
-          </tr>
-
-          </thead>
-
-          <tbody>
-
-          <tr>
-
-            <td>Amlodipine</td>
-
-            <td>5mg Daily</td>
-
-            <td>Dr. Smith</td>
-
-            <td>30 Days</td>
-
-          </tr>
-
-          <tr>
-
-            <td>Ventolin Inhaler</td>
-
-            <td>As Needed</td>
-
-            <td>Dr. Adams</td>
-
-            <td>Continuous</td>
-
-          </tr>
-
-          </tbody>
-
-        </table>
-
+      <section className="content-card">
+        <div className="card-heading"><div><span className="section-label">MEDICATION HISTORY</span><h3>Prescription details</h3></div></div>
+        <div className="table-wrap"><table className="modern-table"><thead><tr><th>Medication</th><th>Dosage</th><th>Frequency</th><th>Doctor</th><th>Duration</th></tr></thead><tbody>{PRESCRIPTIONS.map((item) => <tr key={item.medication}><td><strong>{item.medication}</strong></td><td>{item.dosage}</td><td>{item.frequency}</td><td>{item.doctor}</td><td>{item.duration}</td></tr>)}</tbody></table></div>
       </section>
-
-    </div>
+    </AppShell>
   );
-};
-
-export default Prescriptions;
+}

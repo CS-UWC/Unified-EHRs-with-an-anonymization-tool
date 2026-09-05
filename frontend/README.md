@@ -1,73 +1,54 @@
-# React + TypeScript + Vite
+# SA EHRS Frontend Prototype
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This frontend is a prototype demonstration for the Unified Electronic Health Record (EHR) project.
 
-Currently, two official plugins are available:
+## Included demo flows
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Patient portal
+- Dashboard
+- Patient profile
+- Medical history
+- Laboratory results
+- Appointments
+- Prescriptions
+- Medical scans
+- Privacy & Access
+- Approve/reject external-system access requests
+- Revoke approved access
 
-## React Compiler
+### External healthcare system
+- Integration dashboard
+- Search/request patient access using national ID
+- Request independent read/write permissions
+- View authorised records only after patient approval
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Prototype behaviour
 
-## Expanding the ESLint configuration
+The access-request flow is simulated with browser `localStorage` so that it can be demonstrated without the backend being connected.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+A useful demo sequence is:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. Sign in as **External System**.
+2. Go to **Patient Access**.
+3. Submit a read/write access request.
+4. Sign out.
+5. Sign in as **Patient**.
+6. Open **Privacy & Access**.
+7. Approve the request.
+8. Sign out.
+9. Sign in as **External System** again.
+10. Open **Authorised Records** to demonstrate that access is now available.
+11. Return to the Patient portal and revoke access to demonstrate the permission lifecycle.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Run
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+From the frontend directory:
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The project uses React + TypeScript + Vite and the existing `react-icons` dependency.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+The existing SA EHRS logo and navy/blue healthcare colour scheme have been retained.

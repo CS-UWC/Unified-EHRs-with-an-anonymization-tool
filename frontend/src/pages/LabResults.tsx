@@ -1,108 +1,28 @@
-/**
- * Laboratory Results Page
- *
- * This page allows patients to:
- * - View laboratory test results
- * - Monitor diagnostic reports
- * - Access healthcare investigations
- *
- * This demonstrates centralized healthcare
- * diagnostics within the Unified EHR system.
- */
+import { FaCheckCircle, FaFlask } from "react-icons/fa";
+import AppShell from "../components/AppShell";
+import { LAB_RESULTS } from "../demoData";
 
-const LabResults = () => {
-
+export default function LabResults() {
   return (
-
-    <div className="lab-results-page">
-
-      {/* ===================================================== */}
-      {/* PAGE HEADER                                           */}
-      {/* ===================================================== */}
-
-      <div className="lab-header">
-
-        <h1>Laboratory Results</h1>
-
-        <p>
-          Access laboratory investigations and
-          diagnostic reports from healthcare providers.
-        </p>
-
+    <AppShell role="PATIENT" title="Laboratory Results" subtitle="Diagnostic investigations from your connected providers.">
+      <div className="stat-grid">
+        <div className="stat-card"><div className="stat-icon"><FaFlask /></div><div><span>Total tests</span><strong>{LAB_RESULTS.length}</strong></div></div>
+        <div className="stat-card"><div className="stat-icon"><FaCheckCircle /></div><div><span>Completed</span><strong>{LAB_RESULTS.filter((r) => r.status === "Completed").length}</strong></div></div>
       </div>
 
-      {/* ===================================================== */}
-      {/* LAB RESULTS TABLE                                     */}
-      {/* ===================================================== */}
-
-      <section className="medical-card">
-
-        <h2>Recent Test Results</h2>
-
-        <table>
-
-          <thead>
-
-          <tr>
-
-            <th>Test</th>
-
-            <th>Date</th>
-
-            <th>Facility</th>
-
-            <th>Status</th>
-
-          </tr>
-
-          </thead>
-
-          <tbody>
-
-          <tr>
-
-            <td>Blood Pressure Test</td>
-
-            <td>01 May 2026</td>
-
-            <td>Groote Schuur Hospital</td>
-
-            <td>Completed</td>
-
-          </tr>
-
-          <tr>
-
-            <td>Cholesterol Screening</td>
-
-            <td>22 April 2026</td>
-
-            <td>Netcare Hospital</td>
-
-            <td>Completed</td>
-
-          </tr>
-
-          <tr>
-
-            <td>Chest X-Ray</td>
-
-            <td>10 April 2026</td>
-
-            <td>Tygerberg Hospital</td>
-
-            <td>Completed</td>
-
-          </tr>
-
-          </tbody>
-
-        </table>
-
+      <section className="content-card">
+        <div className="card-heading"><div><span className="section-label">DIAGNOSTICS</span><h3>Recent test results</h3></div></div>
+        <div className="table-wrap">
+          <table className="modern-table">
+            <thead><tr><th>Test</th><th>Date</th><th>Facility</th><th>Result</th><th>Status</th></tr></thead>
+            <tbody>
+              {LAB_RESULTS.map((result) => (
+                <tr key={`${result.test}-${result.date}`}><td><strong>{result.test}</strong></td><td>{result.date}</td><td>{result.facility}</td><td>{result.result}</td><td><span className="status-pill completed"><FaCheckCircle /> {result.status}</span></td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
-
-    </div>
+    </AppShell>
   );
-};
-
-export default LabResults;
+}
