@@ -18,14 +18,13 @@ export default function Login() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
-
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
 
-    setError("");
+  
     setLoading(true);
 
     try {
@@ -140,6 +139,11 @@ export default function Login() {
               />
             </label>
 
+            {error && (
+              <div className="error-message">
+                {error}
+              </div>
+            )}
           
 
             <button

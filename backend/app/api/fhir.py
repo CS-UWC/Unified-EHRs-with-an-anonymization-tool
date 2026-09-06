@@ -16,6 +16,7 @@ from fastapi import Depends
 from fastapi import File
 from fastapi import HTTPException
 from fastapi import UploadFile
+from fastapi.responses import FileResponse
 
 from sqlalchemy.orm import Session
 
@@ -1566,4 +1567,95 @@ def get_patient_scan(
                 }
             }
         ]
+    )
+
+# ============================================================
+# GET MEDICAL SCAN FILE
+# ============================================================
+
+@router.get(
+    "/patient/{national_id}/scans/{scan_id}/file"
+)
+def get_patient_scan_file(
+
+    national_id: str,
+
+    scan_id: int,
+
+    current_user: User = Depends(
+        require_role(
+            "PATIENT",
+            "DOCTOR",
+            "EXTERNAL_SYSTEM",
+            "ADMIN"
+        )
+    ),
+
+    db: Session = Depends(
+        get_db
+    )
+
+):
+
+    # --------------------------------------------------------
+    # AUTHORIZE PATIENT ACCESS
+    # --------------------------------------------------------
+
+    patient = authorize_patient_access(
+        national_id,
+        current_user,
+        db
+    )
+
+    # --------------------------------------------------------
+    # FIND SCAN BELONGING TO THIS PATIENT
+    # --------------------------------------------------------
+
+    scan = (
+        db.query(MedicalImage)
+        .filter(
+            MedicalImage.id == scan_id,
+            MedicalImage.patient_id == patient.id
+        )
+        .first()
+    )
+
+    if scan is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Medical scan not found."
+        )
+
+    # --------------------------------------------------------
+    # RESOLVE STORED FILE PATH
+    # --------------------------------------------------------
+
+    file_path = Path(
+        scan.file_path
+    )
+
+    # --------------------------------------------------------
+    # VERIFY FILE EXISTS
+    # --------------------------------------------------------
+
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Medical scan file not found."
+        )
+
+    if not file_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="Medical scan path is not a file."
+        )
+
+    # --------------------------------------------------------
+    # RETURN ACTUAL FILE
+    # --------------------------------------------------------
+
+    return FileResponse(
+        path=str(file_path),
+        media_type=scan.content_type,
+        filename=scan.file_name
     )

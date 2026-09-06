@@ -100,10 +100,6 @@ export default function PatientProfile() {
     );
   }
 
-  const name = patient.user_id
-    ? "Patient"
-    : "Patient";
-
   const formatDate = (date: string | null) => {
     if (!date) return "—";
 
