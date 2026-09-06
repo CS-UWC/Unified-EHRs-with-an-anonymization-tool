@@ -30,52 +30,60 @@ export default function ExternalPatientSearch() {
   const [requestId, setRequestId] = useState("");
 
   async function submit(event: FormEvent) {
-    event.preventDefault();
+  event.preventDefault();
 
-    setLoading(true);
-    setMessage("");
-    setRequestId("");
+  const cleanedNationalId = nationalId.trim();
 
-    try {
-      if (!read && !write) {
-        throw new Error(
-          "Select at least one permission."
-        );
-      }
+  setLoading(true);
+  setMessage("");
+  setRequestId("");
 
-      const response =
-        await apiRequest<AccessRequestResponse>(
-          "/access-requests/",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              national_id: nationalId.trim(),
-              can_read: read,
-              can_write: write,
-            }),
-          }
-        );
-
-      setMessage(
-        response.message ||
-          "Access request submitted. The patient must approve it before data can be accessed."
+  try {
+    if (!cleanedNationalId) {
+      throw new Error(
+        "Please enter the patient's National ID."
       );
-
-      setRequestId(
-        String(response.request_id)
-      );
-
-      setNationalId("");
-    } catch (err) {
-      setMessage(
-        err instanceof Error
-          ? err.message
-          : "Could not submit the access request."
-      );
-    } finally {
-      setLoading(false);
     }
+
+    if (!read && !write) {
+      throw new Error(
+        "Select at least one permission."
+      );
+    }
+
+    const response =
+      await apiRequest<AccessRequestResponse>(
+        "/access-requests/",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            national_id: cleanedNationalId,
+            can_read: read,
+            can_write: write,
+          }),
+        }
+      );
+
+    setMessage(
+      response.message ||
+        "Access request submitted. The patient must approve it before data can be accessed."
+    );
+
+    setRequestId(
+      String(response.request_id)
+    );
+
+    setNationalId("");
+  } catch (err) {
+    setMessage(
+      err instanceof Error
+        ? err.message
+        : "Could not submit the access request."
+    );
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <AppShell
