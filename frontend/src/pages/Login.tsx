@@ -42,7 +42,7 @@ export default function Login() {
 
         <div className="visual-footer">
           <span>SA EHRS</span>
-          <span>Prototype Demonstration • 2026</span>
+          <span>By Eyethu Njemla • 2026</span>
         </div>
       </div>
 
@@ -55,7 +55,6 @@ export default function Login() {
           <div className="login-heading">
             <span className="section-label">WELCOME</span>
             <h2>Sign in to SA EHRS</h2>
-            <p>Select the portal you want to demonstrate.</p>
           </div>
 
           <div className="role-selector">
@@ -106,10 +105,7 @@ export default function Login() {
               />
             </label>
 
-            <div className="demo-note">
-              <FaLock />
-              <span>Prototype mode — authentication is simulated for demonstration.</span>
-            </div>
+          
 
             <button className="primary-button login-submit" type="submit">
               Sign in
@@ -117,10 +113,7 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="login-footer">
-            <span>Protected by SA EHRS security controls</span>
-            <span>POPIA-aware prototype</span>
-          </div>
+        
         </div>
       </div>
     </div>
