@@ -29,6 +29,7 @@ from app.models.external_system_permission import (
     ExternalSystemPermission
 )
 
+
 from app.schemas.access_request import (
     AccessRequestCreate
 )
@@ -688,3 +689,131 @@ def revoke_external_system_access(
             permission.revoked_at
 
     }
+
+#=============================================================
+# THE EXTERNAL SYSTEM CAN CHECK WHETHER IT HAS ACTIVE PERMISSION
+#=============================================================
+@router.get(
+    "/mine"
+)
+def get_my_external_permissions(
+
+    current_user: User = Depends(
+        get_current_user
+    ),
+
+    db: Session = Depends(
+        get_db
+    )
+):
+
+    if current_user.role != "EXTERNAL_SYSTEM":
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only external systems can access this endpoint"
+        )
+
+    permissions = (
+        db.query(ExternalSystemPermission)
+        .filter(
+            ExternalSystemPermission.external_system_id
+            == current_user.id,
+            ExternalSystemPermission.revoked_at.is_(None)
+        )
+        .all()
+    )
+
+    result = []
+
+    for permission in permissions:
+
+        patient = (
+            db.query(Patient)
+            .filter(
+                Patient.id == permission.patient_id
+            )
+            .first()
+        )
+
+        if patient is None:
+            continue
+
+        result.append(
+            {
+                "patient_national_id": patient.national_id,
+                "can_read": permission.can_read,
+                "can_write": permission.can_write,
+                "granted_at": permission.granted_at,
+            }
+        )
+
+    return result
+
+@router.get(
+    "/mine/requests"
+)
+def get_my_access_requests(
+
+    current_user: User = Depends(
+        get_current_user
+    ),
+
+    db: Session = Depends(
+        get_db
+    )
+):
+
+    if current_user.role != "EXTERNAL_SYSTEM":
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only external systems can access this endpoint"
+        )
+
+    requests = (
+        db.query(AccessRequest)
+        .filter(
+            AccessRequest.external_system_id
+            == current_user.id
+        )
+        .order_by(
+            AccessRequest.created_at.desc()
+        )
+        .all()
+    )
+
+    result = []
+
+    for request in requests:
+
+        patient = (
+            db.query(Patient)
+            .filter(
+                Patient.id == request.patient_id
+            )
+            .first()
+        )
+
+        if patient is None:
+            continue
+
+        result.append(
+            {
+                "request_id": request.id,
+                "patient_national_id":
+                    patient.national_id,
+                "requested_read":
+                    request.requested_read,
+                "requested_write":
+                    request.requested_write,
+                "status":
+                    request.status,
+                "created_at":
+                    request.created_at,
+                "responded_at":
+                    request.responded_at,
+            }
+        )
+
+    return result

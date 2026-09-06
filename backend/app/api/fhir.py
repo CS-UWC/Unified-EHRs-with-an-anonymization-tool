@@ -6,17 +6,16 @@ External systems identify patients using NATIONAL ID.
 Internal patient.id is NEVER exposed as the
 external interoperability identifier.
 """
-import os
+
 import uuid
 
 from pathlib import Path
 
-from fastapi import File
-from fastapi import UploadFile
-
 from fastapi import APIRouter
 from fastapi import Depends
+from fastapi import File
 from fastapi import HTTPException
+from fastapi import UploadFile
 
 from sqlalchemy.orm import Session
 
@@ -31,15 +30,6 @@ from app.models.user import User
 from app.models.medical_image import MedicalImage
 
 from app.fhir.patient import FHIRPatient
-
-from app.core.authorization import require_role
-from app.core.dependencies import get_current_user
-
-from app.core.patient_authorization import (
-    authorize_patient_access,
-    authorize_patient_write_access
-)
-
 
 from app.fhir.observation import (
     FHIRObservation
@@ -57,6 +47,9 @@ from app.fhir.medication import (
     FHIRMedicationRequest
 )
 
+from app.fhir.imaging import (
+    FHIRDocumentReference
+)
 
 from app.fhir.mapper import (
     patient_to_fhir,
@@ -73,8 +66,15 @@ from app.fhir.mapper import (
     fhir_to_medical_record_data
 )
 
-from app.fhir.imaging import (
-    FHIRDocumentReference
+from app.core.authorization import require_role
+
+from app.core.dependencies import (
+    get_current_user
+)
+
+from app.core.patient_authorization import (
+    authorize_patient_access,
+    authorize_patient_write_access
 )
 
 from app.services.research_data_service import (
@@ -82,6 +82,11 @@ from app.services.research_data_service import (
     create_research_data_from_observation,
     create_research_data_from_prescription
 )
+
+
+# ============================================================
+# MEDICAL IMAGE STORAGE
+# ============================================================
 
 UPLOAD_DIR = Path(
     "uploads/medical_images"
@@ -91,6 +96,11 @@ UPLOAD_DIR.mkdir(
     parents=True,
     exist_ok=True
 )
+
+
+# ============================================================
+# ROUTER
+# ============================================================
 
 router = APIRouter(
     prefix="/fhir",
@@ -106,17 +116,18 @@ def get_patient_by_national_id(
     national_id: str,
     db: Session
 ):
+    """
+    Resolve a National ID to the internal Patient object.
+
+    The internal Patient.id is used only inside the backend.
+    """
 
     patient = (
-
         db.query(Patient)
-
         .filter(
             Patient.national_id == national_id
         )
-
         .first()
-
     )
 
     if not patient:
@@ -145,7 +156,9 @@ def get_fhir_patient(
         get_current_user
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
 
@@ -180,9 +193,15 @@ def receive_fhir_patient(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
+
+    # --------------------------------------------------------
+    # Validate identifier
+    # --------------------------------------------------------
 
     if not fhir_patient.identifier:
 
@@ -198,23 +217,45 @@ def receive_fhir_patient(
         fhir_patient.identifier[0].value
     )
 
+    if not national_id:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "FHIR Patient identifier "
+                "must contain a National ID."
+            )
+        )
+
+    # --------------------------------------------------------
+    # Resolve patient and enforce write access
+    # --------------------------------------------------------
+
     patient = authorize_patient_write_access(
         national_id,
         current_user,
         db
     )
 
+    # --------------------------------------------------------
+    # Convert FHIR data
+    # --------------------------------------------------------
+
     patient_data = fhir_to_patient_data(
         fhir_patient
     )
 
-    if patient_data["date_of_birth"]:
+    if patient_data.get(
+        "date_of_birth"
+    ):
 
         patient.date_of_birth = (
             patient_data["date_of_birth"]
         )
 
-    if patient_data["gender"]:
+    if patient_data.get(
+        "gender"
+    ):
 
         patient.gender = (
             patient_data["gender"]
@@ -222,7 +263,9 @@ def receive_fhir_patient(
 
     db.commit()
 
-    db.refresh(patient)
+    db.refresh(
+        patient
+    )
 
     return patient_to_fhir(
         patient
@@ -249,9 +292,15 @@ def get_patient_bundle(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
+
+    # --------------------------------------------------------
+    # Authorize patient access
+    # --------------------------------------------------------
 
     patient = authorize_patient_access(
         national_id,
@@ -259,13 +308,11 @@ def get_patient_bundle(
         db
     )
 
-    # ========================================================
-    # INTERNAL ID
+    # --------------------------------------------------------
+    # Internal ID
     #
-    # Used ONLY internally to retrieve related records.
-    #
-    # NEVER returned to external systems.
-    # ========================================================
+    # This is NEVER returned to the external system.
+    # --------------------------------------------------------
 
     internal_patient_id = patient.id
 
@@ -286,16 +333,15 @@ def get_patient_bundle(
     # ========================================================
 
     records = (
-
         db.query(MedicalRecord)
-
         .filter(
             MedicalRecord.patient_id
             == internal_patient_id
         )
-
+        .order_by(
+            MedicalRecord.created_at.desc()
+        )
         .all()
-
     )
 
     for record in records:
@@ -311,16 +357,15 @@ def get_patient_bundle(
     # ========================================================
 
     appointments = (
-
         db.query(Appointment)
-
         .filter(
             Appointment.patient_id
             == internal_patient_id
         )
-
+        .order_by(
+            Appointment.appointment_date.desc()
+        )
         .all()
-
     )
 
     for appointment in appointments:
@@ -336,16 +381,15 @@ def get_patient_bundle(
     # ========================================================
 
     prescriptions = (
-
         db.query(Prescription)
-
         .filter(
             Prescription.patient_id
             == internal_patient_id
         )
-
+        .order_by(
+            Prescription.created_at.desc()
+        )
         .all()
-
     )
 
     for prescription in prescriptions:
@@ -361,16 +405,15 @@ def get_patient_bundle(
     # ========================================================
 
     observations = (
-
         db.query(LabResult)
-
         .filter(
             LabResult.patient_id
             == internal_patient_id
         )
-
+        .order_by(
+            LabResult.id.desc()
+        )
         .all()
-
     )
 
     for observation in observations:
@@ -381,21 +424,20 @@ def get_patient_bundle(
             )
         )
 
-        # ========================================================
+    # ========================================================
     # MEDICAL SCANS
     # ========================================================
 
     scans = (
-
         db.query(MedicalImage)
-
         .filter(
             MedicalImage.patient_id
             == internal_patient_id
         )
-
+        .order_by(
+            MedicalImage.id.desc()
+        )
         .all()
-
     )
 
     for scan in scans:
@@ -432,7 +474,9 @@ def get_patient_observations(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
 
@@ -443,25 +487,22 @@ def get_patient_observations(
     )
 
     results = (
-
         db.query(LabResult)
-
         .filter(
-            LabResult.patient_id == patient.id
+            LabResult.patient_id
+            == patient.id
         )
-
+        .order_by(
+            LabResult.id.desc()
+        )
         .all()
-
     )
 
     return [
-
         lab_result_to_fhir(
             result
         )
-
         for result in results
-
     ]
 
 
@@ -485,7 +526,9 @@ def create_fhir_observation(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
 
@@ -517,7 +560,7 @@ def create_fhir_observation(
         )
 
     # --------------------------------------------------------
-    # Extract NATIONAL ID
+    # Extract National ID
     # --------------------------------------------------------
 
     try:
@@ -533,10 +576,6 @@ def create_fhir_observation(
             detail=str(error)
         )
 
-    # --------------------------------------------------------
-    # Validate NATIONAL ID
-    # --------------------------------------------------------
-
     if not national_id:
 
         raise HTTPException(
@@ -548,11 +587,7 @@ def create_fhir_observation(
         )
 
     # --------------------------------------------------------
-    # Find patient using NATIONAL ID
-    #
-    # IMPORTANT:
-    # The external system supplies the national ID.
-    # The internal patient.id is resolved by the backend.
+    # Resolve patient and authorize write access
     # --------------------------------------------------------
 
     patient = authorize_patient_write_access(
@@ -561,22 +596,11 @@ def create_fhir_observation(
         db
     )
 
-    if not patient:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Patient not found."
-        )
-
     # --------------------------------------------------------
-    # Create internal database record
-    #
-    # patient.id is INTERNAL ONLY.
-    # It is never supplied by the external system.
+    # Create internal LabResult
     # --------------------------------------------------------
 
     new_result = LabResult(
-
         patient_id=patient.id,
 
         test_name=observation.code,
@@ -584,32 +608,19 @@ def create_fhir_observation(
         result=observation.value,
 
         normal_range=(
-
             observation.referenceRange.text
-
             if observation.referenceRange
-
             else "Not specified"
-
         ),
 
         laboratory_name=(
-
             observation.laboratory
-
             if observation.laboratory
-
             else "External Laboratory"
-
         ),
 
         status=observation.status
-
     )
-
-    # --------------------------------------------------------
-    # Save to database
-    # --------------------------------------------------------
 
     db.add(
         new_result
@@ -620,17 +631,11 @@ def create_fhir_observation(
     # --------------------------------------------------------
 
     create_research_data_from_observation(
-
         db=db,
-
         patient=patient,
-
         test_name=observation.code,
-
         result=observation.value,
-
         status=observation.status,
-
         laboratory_name=(
             observation.laboratory
             if observation.laboratory
@@ -639,7 +644,7 @@ def create_fhir_observation(
     )
 
     # --------------------------------------------------------
-    # Commit clinical + research data together
+    # Commit clinical + research data
     # --------------------------------------------------------
 
     db.commit()
@@ -647,10 +652,6 @@ def create_fhir_observation(
     db.refresh(
         new_result
     )
-
-    # --------------------------------------------------------
-    # Return FHIR representation
-    # --------------------------------------------------------
 
     return lab_result_to_fhir(
         new_result
@@ -678,7 +679,9 @@ def get_patient_medical_records(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
 
@@ -689,25 +692,22 @@ def get_patient_medical_records(
     )
 
     records = (
-
         db.query(MedicalRecord)
-
         .filter(
-            MedicalRecord.patient_id == patient.id
+            MedicalRecord.patient_id
+            == patient.id
         )
-
+        .order_by(
+            MedicalRecord.created_at.desc()
+        )
         .all()
-
     )
 
     return [
-
         medical_record_to_fhir(
             record
         )
-
         for record in records
-
     ]
 
 
@@ -731,7 +731,9 @@ def create_fhir_medical_record(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
 
@@ -757,6 +759,10 @@ def create_fhir_medical_record(
             detail=str(exc)
         )
 
+    # --------------------------------------------------------
+    # Resolve by National ID and authorize write
+    # --------------------------------------------------------
+
     patient = authorize_patient_write_access(
         data["national_id"],
         current_user,
@@ -764,19 +770,16 @@ def create_fhir_medical_record(
     )
 
     # --------------------------------------------------------
-    # The internal MedicalRecord model does not have a
-    # "conclusion" column.
+    # Store incoming conclusion
     #
-    # We therefore store the incoming FHIR conclusion
-    # in medical_history.
+    # The current MedicalRecord model does not contain
+    # a "conclusion" field, so the FHIR conclusion is
+    # stored in medical_history.
     # --------------------------------------------------------
 
     new_record = MedicalRecord(
-
         patient_id=patient.id,
-
         medical_history=data["conclusion"]
-
     )
 
     db.add(
@@ -788,17 +791,13 @@ def create_fhir_medical_record(
     # --------------------------------------------------------
 
     create_research_data(
-
         db=db,
-
         patient=patient,
-
         medical_record=new_record
-
     )
 
     # --------------------------------------------------------
-    # Commit both records together
+    # Commit
     # --------------------------------------------------------
 
     db.commit()
@@ -833,7 +832,9 @@ def get_patient_appointments(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
 
@@ -844,25 +845,22 @@ def get_patient_appointments(
     )
 
     appointments = (
-
         db.query(Appointment)
-
         .filter(
-            Appointment.patient_id == patient.id
+            Appointment.patient_id
+            == patient.id
         )
-
+        .order_by(
+            Appointment.appointment_date.desc()
+        )
         .all()
-
     )
 
     return [
-
         appointment_to_fhir(
             appointment
         )
-
         for appointment in appointments
-
     ]
 
 
@@ -886,7 +884,9 @@ def create_fhir_appointment(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
 
@@ -913,8 +913,7 @@ def create_fhir_appointment(
         )
 
     # --------------------------------------------------------
-    # Resolve patient using NATIONAL ID and enforce
-    # patient-controlled write authorization.
+    # Resolve patient using National ID
     # --------------------------------------------------------
 
     patient = authorize_patient_write_access(
@@ -924,23 +923,16 @@ def create_fhir_appointment(
     )
 
     new_appointment = Appointment(
-
         patient_id=patient.id,
-
         doctor_name=data["doctor_name"],
-
         appointment_date=(
             data["appointment_date"]
         ),
-
         appointment_time=(
             data["appointment_time"]
         ),
-
         description=data["description"],
-
         status=data["status"]
-
     )
 
     db.add(
@@ -979,7 +971,9 @@ def get_patient_prescriptions(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
 
@@ -990,25 +984,22 @@ def get_patient_prescriptions(
     )
 
     prescriptions = (
-
         db.query(Prescription)
-
         .filter(
-            Prescription.patient_id == patient.id
+            Prescription.patient_id
+            == patient.id
         )
-
+        .order_by(
+            Prescription.created_at.desc()
+        )
         .all()
-
     )
 
     return [
-
         prescription_to_fhir(
             prescription
         )
-
         for prescription in prescriptions
-
     ]
 
 
@@ -1032,7 +1023,9 @@ def create_fhir_prescription(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
 
@@ -1041,8 +1034,7 @@ def create_fhir_prescription(
         raise HTTPException(
             status_code=400,
             detail=(
-                "Resource must be a "
-                "MedicationRequest."
+                "Resource must be a MedicationRequest."
             )
         )
 
@@ -1060,8 +1052,7 @@ def create_fhir_prescription(
         )
 
     # --------------------------------------------------------
-    # Resolve patient using NATIONAL ID and enforce
-    # patient-controlled write authorization.
+    # Resolve patient using National ID
     # --------------------------------------------------------
 
     patient = authorize_patient_write_access(
@@ -1071,7 +1062,6 @@ def create_fhir_prescription(
     )
 
     new_prescription = Prescription(
-
         patient_id=patient.id,
 
         doctor_name=(
@@ -1097,7 +1087,6 @@ def create_fhir_prescription(
         instructions=(
             data["instructions"]
         )
-
     )
 
     db.add(
@@ -1109,30 +1098,24 @@ def create_fhir_prescription(
     # --------------------------------------------------------
 
     create_research_data_from_prescription(
-
         db=db,
-
         patient=patient,
-
         medicine_name=(
             data["medicine_name"]
         ),
-
         dosage=(
             data["dosage"]
         ),
-
         frequency=(
             data["frequency"]
         ),
-
         duration=(
             data["duration"]
         )
     )
 
     # --------------------------------------------------------
-    # Commit clinical + research data together
+    # Commit
     # --------------------------------------------------------
 
     db.commit()
@@ -1144,9 +1127,12 @@ def create_fhir_prescription(
     return prescription_to_fhir(
         new_prescription
     )
-#=====================================================================================================
-#ENDPOINT TO UPLOAD MEDICAL SCANS (IMAGES) AND RETURN FHIR DOCUMENTREFERENCE RESOURCE
-#======================================================================================================
+
+
+# ============================================================
+# UPLOAD MEDICAL SCAN
+# ============================================================
+
 @router.post(
     "/patient/{national_id}/scan",
     response_model=FHIRDocumentReference
@@ -1169,12 +1155,14 @@ async def upload_medical_scan(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
 
     # ========================================================
-    # AUTHORIZE PATIENT WRITE ACCESS
+    # AUTHORIZE WRITE ACCESS
     # ========================================================
 
     patient = authorize_patient_write_access(
@@ -1245,13 +1233,17 @@ async def upload_medical_scan(
                 if not chunk:
                     break
 
-                buffer.write(chunk)
+                buffer.write(
+                    chunk
+                )
 
     except Exception:
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to save medical image."
+            detail=(
+                "Failed to save medical image."
+            )
         )
 
     # ========================================================
@@ -1259,21 +1251,12 @@ async def upload_medical_scan(
     # ========================================================
 
     new_image = MedicalImage(
-
         patient_id=patient.id,
-
         file_name=original_name,
-
-        file_path=str(
-            file_path
-        ),
-
+        file_path=str(file_path),
         content_type=file.content_type,
-
         scan_type=scan_type,
-
         description=description
-
     )
 
     db.add(
@@ -1287,46 +1270,44 @@ async def upload_medical_scan(
     )
 
     # ========================================================
-    # RETURN FHIR RESOURCE
+    # RETURN FHIR DOCUMENTREFERENCE
     # ========================================================
 
     return FHIRDocumentReference(
-
         id=str(
             new_image.id
         ),
 
         subject={
-            "reference": (
+            "reference":
                 f"Patient/{national_id}"
-            )
         },
 
         description=description,
 
         content=[
-
             {
                 "attachment": {
+                    "contentType":
+                        file.content_type,
 
-                    "contentType": (
-                        file.content_type
-                    ),
+                    "url":
+                        (
+                            f"/uploads/medical_images/"
+                            f"{generated_name}"
+                        ),
 
-                    "url": (
-                        f"/uploads/medical_images/"
-                        f"{generated_name}"
-                    ),
-
-                    "title": original_name
-
+                    "title":
+                        original_name
                 }
-
             }
-
         ]
-
     )
+
+
+# ============================================================
+# GET ALL MEDICAL SCANS
+# ============================================================
 
 @router.get(
     "/patient/{national_id}/scans",
@@ -1345,7 +1326,9 @@ def get_patient_scans(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
 
@@ -1366,7 +1349,11 @@ def get_patient_scans(
     scans = (
         db.query(MedicalImage)
         .filter(
-            MedicalImage.patient_id == patient.id
+            MedicalImage.patient_id
+            == patient.id
+        )
+        .order_by(
+            MedicalImage.id.desc()
         )
         .all()
     )
@@ -1379,10 +1366,49 @@ def get_patient_scans(
 
     for scan in scans:
 
+        # ----------------------------------------------------
+        # Normalize Windows path separators
+        # ----------------------------------------------------
+
+        stored_path = str(
+            scan.file_path
+        ).replace(
+            "\\",
+            "/"
+        )
+
+        # ----------------------------------------------------
+        # Convert local storage path into public
+        # FastAPI /uploads URL.
+        #
+        # Example:
+        # uploads/medical_images/a.png
+        #
+        # becomes:
+        # /uploads/medical_images/a.png
+        # ----------------------------------------------------
+
+        uploads_marker = "uploads/"
+
+        if uploads_marker in stored_path:
+
+            relative_path = stored_path.split(
+                uploads_marker,
+                1
+            )[1]
+
+            public_url = (
+                f"/uploads/{relative_path}"
+            )
+
+        else:
+
+            public_url = (
+                f"/{stored_path.lstrip('/')}"
+            )
+
         resources.append(
-
             FHIRDocumentReference(
-
                 id=str(
                     scan.id
                 ),
@@ -1397,29 +1423,28 @@ def get_patient_scans(
                 ),
 
                 content=[
-
                     {
                         "attachment": {
-
                             "contentType":
                                 scan.content_type,
 
                             "url":
-                                f"/{scan.file_path}",
+                                public_url,
 
                             "title":
                                 scan.file_name
-
                         }
                     }
-
                 ]
-
             )
-
         )
 
     return resources
+
+
+# ============================================================
+# GET SINGLE MEDICAL SCAN
+# ============================================================
 
 @router.get(
     "/patient/{national_id}/scans/{scan_id}",
@@ -1440,9 +1465,15 @@ def get_patient_scan(
         )
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 
 ):
+
+    # ========================================================
+    # AUTHORIZE PATIENT ACCESS
+    # ========================================================
 
     patient = authorize_patient_access(
         national_id,
@@ -1450,11 +1481,18 @@ def get_patient_scan(
         db
     )
 
+    # ========================================================
+    # GET SCAN
+    #
+    # Both scan ID and internal patient ID must match.
+    # ========================================================
+
     scan = (
         db.query(MedicalImage)
         .filter(
             MedicalImage.id == scan_id,
-            MedicalImage.patient_id == patient.id
+            MedicalImage.patient_id
+            == patient.id
         )
         .first()
     )
@@ -1466,8 +1504,41 @@ def get_patient_scan(
             detail="Medical scan not found."
         )
 
-    return FHIRDocumentReference(
+    # ========================================================
+    # NORMALIZE WINDOWS PATH
+    # ========================================================
 
+    stored_path = str(
+        scan.file_path
+    ).replace(
+        "\\",
+        "/"
+    )
+
+    uploads_marker = "uploads/"
+
+    if uploads_marker in stored_path:
+
+        relative_path = stored_path.split(
+            uploads_marker,
+            1
+        )[1]
+
+        public_url = (
+            f"/uploads/{relative_path}"
+        )
+
+    else:
+
+        public_url = (
+            f"/{stored_path.lstrip('/')}"
+        )
+
+    # ========================================================
+    # RETURN FHIR DOCUMENTREFERENCE
+    # ========================================================
+
+    return FHIRDocumentReference(
         id=str(
             scan.id
         ),
@@ -1482,22 +1553,17 @@ def get_patient_scan(
         ),
 
         content=[
-
             {
                 "attachment": {
-
                     "contentType":
                         scan.content_type,
 
                     "url":
-                        f"/{scan.file_path}",
+                        public_url,
 
                     "title":
                         scan.file_name
-
                 }
             }
-
         ]
-
     )
