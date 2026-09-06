@@ -34,14 +34,14 @@ router = APIRouter(
 
 
 # ============================================================
-# GET MY MEDICAL RECORD
+# GET ALL MY MEDICAL RECORDS
 # ============================================================
 
 @router.get(
     "/me",
-    response_model=MedicalRecordResponse
+    response_model=list[MedicalRecordResponse]
 )
-def get_my_record(
+def get_my_records(
 
     db: Session = Depends(get_db),
 
@@ -71,26 +71,21 @@ def get_my_record(
         )
 
     # --------------------------------------------------------
-    # Resolve Patient.id internally
+    # Patient.id is used internally only.
     #
-    # Patient.id is never exposed to the frontend
-    # as an interoperability identifier.
+    # The frontend/interoperability layer uses National ID.
     # --------------------------------------------------------
 
-    record = (
+    records = (
         db.query(MedicalRecord)
         .filter(
             MedicalRecord.patient_id == patient.id
         )
-        .first()
+        .order_by(
+            MedicalRecord.id.desc()
+        )
+        .all()
     )
 
-    if not record:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Medical record not found"
-        )
-
-    return record
+    return records
 

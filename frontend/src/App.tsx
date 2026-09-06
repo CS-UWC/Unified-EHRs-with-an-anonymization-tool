@@ -11,7 +11,6 @@ import MedicalHistory from "./pages/MedicalHistory";
 import Appointments from "./pages/Appointments";
 import LabResults from "./pages/LabResults";
 import Prescriptions from "./pages/Prescriptions";
-import PDFViewer from "./pages/PDFViewer";
 import PatientProfile from "./pages/PatientProfile";
 import MedicalScans from "./pages/MedicalScans";
 import AccessRequests from "./pages/AccessRequests";
@@ -19,22 +18,82 @@ import ExternalDashboard from "./pages/external/ExternalDashboard";
 import ExternalPatientSearch from "./pages/external/ExternalPatientSearch";
 import ExternalPatientRecords from "./pages/external/ExternalPatientRecords";
 
+import { useEffect, useState } from "react";
+import {
+  getCurrentUser,
+  type CurrentUser,
+  type UserRole,
+} from "./services/auth";
+
 function ProtectedRoute({
   children,
   role,
 }: {
   children: React.ReactNode;
-  role?: "PATIENT" | "EXTERNAL_SYSTEM";
+  role?: UserRole;
 }) {
-  const loggedIn = localStorage.getItem("ehr_demo_logged_in") === "true";
-  const currentRole = localStorage.getItem("ehr_demo_role");
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<CurrentUser | null>(null);
 
-  if (!loggedIn) return <Navigate to="/" replace />;
+  useEffect(() => {
+    let mounted = true;
 
-  if (role && currentRole !== role) {
+    async function checkAuthentication() {
+      const token = localStorage.getItem("access_token");
+
+      if (!token) {
+        if (mounted) {
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const currentUser = await getCurrentUser();
+
+        if (mounted) {
+          setUser(currentUser);
+        }
+      } catch {
+        localStorage.removeItem("access_token");
+
+        if (mounted) {
+          setUser(null);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    checkAuthentication();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (role && user.role !== role) {
     return (
       <Navigate
-        to={currentRole === "EXTERNAL_SYSTEM" ? "/external" : "/dashboard"}
+        to={
+          user.role === "EXTERNAL_SYSTEM"
+            ? "/external"
+            : "/dashboard"
+        }
         replace
       />
     );
@@ -121,8 +180,6 @@ function App() {
           }
         />
 
-        <Route path="/pdf-viewer" element={<PDFViewer />} />
-
         <Route
           path="/external"
           element={
@@ -150,7 +207,10 @@ function App() {
           }
         />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
+        />
       </Routes>
     </BrowserRouter>
   );
