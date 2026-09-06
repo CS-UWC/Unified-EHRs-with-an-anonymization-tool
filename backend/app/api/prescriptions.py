@@ -1,8 +1,16 @@
+"""
+Prescriptions API.
+
+Patients can only create, view, update, and delete
+their own prescriptions.
+"""
+
 from typing import List
 
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import HTTPException
+from fastapi import status
 
 from sqlalchemy.orm import Session
 
@@ -10,6 +18,7 @@ from app.dependencies import get_db
 from app.core.dependencies import get_current_user
 
 from app.models import User
+from app.models import Patient
 from app.models import Prescription
 
 from app.schemas.prescription import (
@@ -19,74 +28,40 @@ from app.schemas.prescription import (
 
 
 router = APIRouter(
-
     prefix="/prescriptions",
-
     tags=["Prescriptions"]
-
 )
 
-@router.post(
 
-    "/",
+def get_current_patient(
+    current_user: User,
+    db: Session
+) -> Patient:
 
-    response_model=PrescriptionResponse
-
-)
-def create_prescription(
-
-    prescription: PrescriptionCreate,
-
-    db: Session = Depends(get_db),
-
-    current_user: User = Depends(
-        get_current_user
+    patient = (
+        db.query(Patient)
+        .filter(
+            Patient.user_id == current_user.id
+        )
+        .first()
     )
 
-):
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient profile not found"
+        )
 
-    new_prescription = Prescription(
-
-        patient_id=current_user.id,
-
-        doctor_name=
-        prescription.doctor_name,
-
-        medicine_name=
-        prescription.medicine_name,
-
-        dosage=
-        prescription.dosage,
-
-        frequency=
-        prescription.frequency,
-
-        duration=
-        prescription.duration,
-
-        instructions=
-        prescription.instructions
-
-    )
+    return patient
 
 
-    db.add(new_prescription)
-
-    db.commit()
-
-    db.refresh(new_prescription)
-
-    return new_prescription
-
-# A patient may have many prescriptions, so we'll return a list.    
+# ============================================================
+# GET MY PRESCRIPTIONS
+# ============================================================
 
 @router.get(
-
     "/me",
-
-    response_model=
-    List[PrescriptionResponse]
-
+    response_model=List[PrescriptionResponse]
 )
 def get_my_prescriptions(
 
@@ -98,190 +73,64 @@ def get_my_prescriptions(
 
 ):
 
-    prescriptions = (
-
-        db.query(Prescription)
-
-        .filter(
-            Prescription.patient_id ==
-            current_user.id
-        )
-
-        .all()
-
+    patient = get_current_patient(
+        current_user,
+        db
     )
 
+    prescriptions = (
+        db.query(Prescription)
+        .filter(
+            Prescription.patient_id == patient.id
+        )
+        .all()
+    )
 
     return prescriptions
 
 
+# ============================================================
+# GET ONE OF MY PRESCRIPTIONS
+# ============================================================
+
 @router.get(
-
     "/{prescription_id}",
-
-    response_model=
-    PrescriptionResponse
-
+    response_model=PrescriptionResponse
 )
 def get_prescription(
 
-    prescription_id:int,
+    prescription_id: int,
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(
+        get_current_user
+    )
 
 ):
 
-    prescription = (
-
-        db.query(Prescription)
-
-        .filter(
-            Prescription.id ==
-            prescription_id
-        )
-
-        .first()
-
+    patient = get_current_patient(
+        current_user,
+        db
     )
 
+    prescription = (
+        db.query(Prescription)
+        .filter(
+            Prescription.id == prescription_id,
+            Prescription.patient_id == patient.id
+        )
+        .first()
+    )
 
     if not prescription:
 
         raise HTTPException(
-
-            status_code=404,
-
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Prescription not found"
-
         )
-
 
     return prescription
 
-
-@router.put(
-
-    "/{prescription_id}",
-
-    response_model=
-    PrescriptionResponse
-
-)
-def update_prescription(
-
-    prescription_id:int,
-
-    prescription: PrescriptionCreate,
-
-    db: Session = Depends(get_db)
-
-):
-
-    existing = (
-
-        db.query(Prescription)
-
-        .filter(
-            Prescription.id ==
-            prescription_id
-        )
-
-        .first()
-
-    )
-
-
-    if not existing:
-
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="Prescription not found"
-
-        )
-
-
-    existing.doctor_name = (
-        prescription.doctor_name
-    )
-
-    existing.medicine_name = (
-        prescription.medicine_name
-    )
-
-    existing.dosage = (
-        prescription.dosage
-    )
-
-    existing.frequency = (
-        prescription.frequency
-    )
-
-    existing.duration = (
-        prescription.duration
-    )
-
-    existing.instructions = (
-        prescription.instructions
-    )
-
-
-    db.commit()
-
-    db.refresh(existing)
-
-    return existing
-
-
-@router.delete(
-
-    "/{prescription_id}"
-
-)
-def delete_prescription(
-
-    prescription_id:int,
-
-    db: Session = Depends(get_db)
-
-):
-
-    prescription = (
-
-        db.query(Prescription)
-
-        .filter(
-            Prescription.id ==
-            prescription_id
-        )
-
-        .first()
-
-    )
-
-
-    if not prescription:
-
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="Prescription not found"
-
-        )
-
-
-    db.delete(prescription)
-
-    db.commit()
-
-
-    return {
-
-        "message":
-        "Prescription deleted successfully."
-
-    }
 
 

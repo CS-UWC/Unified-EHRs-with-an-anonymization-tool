@@ -1,6 +1,16 @@
+"""
+Appointment API.
+
+Patients can only create, view, update, and delete
+their own appointments.
+"""
+
+from typing import List
+
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import HTTPException
+from fastapi import status
 
 from sqlalchemy.orm import Session
 
@@ -8,6 +18,7 @@ from app.dependencies import get_db
 from app.core.dependencies import get_current_user
 
 from app.models import User
+from app.models import Patient
 from app.models import Appointment
 
 from app.schemas.appointment import (
@@ -17,69 +28,39 @@ from app.schemas.appointment import (
 
 
 router = APIRouter(
-
     prefix="/appointments",
-
     tags=["Appointments"]
-
 )
 
-@router.post(
 
-    "/",
+def get_current_patient(
+    current_user: User,
+    db: Session
+) -> Patient:
 
-    response_model=AppointmentResponse
-
-)
-def create_appointment(
-
-    appointment: AppointmentCreate,
-
-    db: Session = Depends(get_db),
-
-    current_user: User = Depends(
-        get_current_user
+    patient = (
+        db.query(Patient)
+        .filter(
+            Patient.user_id == current_user.id
+        )
+        .first()
     )
 
-):
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient profile not found"
+        )
 
-    new_appointment = Appointment(
+    return patient
 
-        patient_id=current_user.id,
-
-        doctor_name=
-        appointment.doctor_name,
-
-        appointment_date=
-        appointment.appointment_date,
-
-        appointment_time=
-        appointment.appointment_time,
-
-        description = "string"
-
-    )
-
-
-    db.add(new_appointment)
-
-    db.commit()
-
-    db.refresh(new_appointment)
-
-    return new_appointment
-
-# returning one appointment, it should return a list.
-from typing import List
-
+# ============================================================
+# GET MY APPOINTMENTS
+# ============================================================
 
 @router.get(
-
     "/me",
-
-    response_model=
-    List[AppointmentResponse]
-
+    response_model=List[AppointmentResponse]
 )
 def get_my_appointments(
 
@@ -91,173 +72,64 @@ def get_my_appointments(
 
 ):
 
-    appointments = (
-
-        db.query(Appointment)
-
-        .filter(
-            Appointment.patient_id ==
-            current_user.id
-        )
-
-        .all()
-
+    patient = get_current_patient(
+        current_user,
+        db
     )
 
+    appointments = (
+        db.query(Appointment)
+        .filter(
+            Appointment.patient_id == patient.id
+        )
+        .all()
+    )
 
     return appointments
 
+
+# ============================================================
+# GET ONE OF MY APPOINTMENTS
+# ============================================================
+
 @router.get(
-
     "/{appointment_id}",
-
-    response_model=
-    AppointmentResponse
-
+    response_model=AppointmentResponse
 )
 def get_appointment(
 
-    appointment_id:int,
+    appointment_id: int,
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(
+        get_current_user
+    )
 
 ):
 
-    appointment = (
-
-        db.query(Appointment)
-
-        .filter(
-            Appointment.id ==
-            appointment_id
-        )
-
-        .first()
-
+    patient = get_current_patient(
+        current_user,
+        db
     )
 
+    appointment = (
+        db.query(Appointment)
+        .filter(
+            Appointment.id == appointment_id,
+            Appointment.patient_id == patient.id
+        )
+        .first()
+    )
 
     if not appointment:
 
         raise HTTPException(
-
-            status_code=404,
-
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Appointment not found"
-
         )
-
 
     return appointment
 
-@router.put(
-
-    "/{appointment_id}",
-
-    response_model=
-    AppointmentResponse
-
-)
-def update_appointment(
-
-    appointment_id:int,
-
-    appointment: AppointmentCreate,
-
-    db: Session = Depends(get_db)
-
-):
-
-    existing = (
-
-        db.query(Appointment)
-
-        .filter(
-            Appointment.id ==
-            appointment_id
-        )
-
-        .first()
-
-    )
 
 
-    if not existing:
-
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="Appointment not found"
-
-        )
-
-
-    existing.doctor_name = (
-        appointment.doctor_name
-    )
-
-    existing.appointment_date = (
-        appointment.appointment_date
-    )
-
-    existing.appointment_time = (
-        appointment.appointment_time
-    )
-
-
-    db.commit()
-
-    db.refresh(existing)
-
-    return existing
-
-@router.delete(
-
-    "/{appointment_id}"
-
-)
-def delete_appointment(
-
-    appointment_id:int,
-
-    db: Session = Depends(get_db)
-
-):
-
-    appointment = (
-
-        db.query(Appointment)
-
-        .filter(
-            Appointment.id ==
-            appointment_id
-        )
-
-        .first()
-
-    )
-
-
-    if not appointment:
-
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="Appointment not found"
-
-        )
-
-
-    db.delete(appointment)
-
-    db.commit()
-
-
-    return {
-
-        "message":
-        "Appointment deleted successfully."
-
-    }
