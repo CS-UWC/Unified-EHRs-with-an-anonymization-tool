@@ -1,8 +1,15 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowRight, FaLock, FaShieldAlt, FaUserMd, FaUser } from "react-icons/fa";
+import {
+  FaArrowRight,
+  FaLock,
+  FaShieldAlt,
+  FaUserMd,
+  FaUser,
+} from "react-icons/fa";
 import logo from "../assets/logo.png";
+import { login, getCurrentUser } from "../services/auth";
 
 type LoginRole = "PATIENT" | "EXTERNAL_SYSTEM";
 
@@ -12,13 +19,41 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const submit = (event: FormEvent) => {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
 
-    localStorage.setItem("ehr_demo_logged_in", "true");
-    localStorage.setItem("ehr_demo_role", role);
+    setError("");
+    setLoading(true);
 
-    navigate(role === "PATIENT" ? "/dashboard" : "/external");
+    try {
+      await login({
+        email: identifier,
+        password,
+      });
+
+      const user = await getCurrentUser();
+
+      localStorage.setItem("ehr_demo_role", user.role);
+
+      if (user.role === "PATIENT") {
+        navigate("/dashboard");
+      } else if (user.role === "EXTERNAL_SYSTEM") {
+        navigate("/external");
+      } else {
+        setError("This account does not have access to this prototype.");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Invalid email or password."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -86,11 +121,11 @@ export default function Login() {
 
           <form onSubmit={submit} className="login-form">
             <label>
-              {role === "PATIENT" ? "ID / Passport Number" : "System Identifier"}
+              Email Address
               <input
                 value={identifier}
                 onChange={(event) => setIdentifier(event.target.value)}
-                placeholder={role === "PATIENT" ? "Enter your ID or passport number" : "e.g. Cape Health Connect"}
+                placeholder={role === "PATIENT" ? "Enter your email address" : "Enter your system email"}
                 required
               />
             </label>
@@ -106,15 +141,26 @@ export default function Login() {
               />
             </label>
 
+            {error && (
+              <div className="login-error">
+                {error}
+              </div>
+            )}
+
             <div className="demo-note">
               <FaLock />
-              <span>Prototype mode — authentication is simulated for demonstration.</span>
+              <span>Secure authentication with role-based access controls.</span>
             </div>
 
-            <button className="primary-button login-submit" type="submit">
-              Sign in
-              <FaArrowRight />
+            <button
+              className="primary-button login-submit"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Signing in..." : "Sign in"}
+              {!loading && <FaArrowRight />}
             </button>
+
           </form>
 
           <div className="login-footer">
