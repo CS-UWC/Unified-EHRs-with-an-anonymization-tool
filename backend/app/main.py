@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.core.database import Base
 from app.core.database import engine
@@ -22,7 +23,6 @@ from app.models import User
 from app.models import Patient
 from app.models.medical_image import MedicalImage
 from app.models.research_data import ResearchData
-from fastapi.staticfiles import StaticFiles
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)

@@ -1,8 +1,11 @@
 """
-Anonymised research data mart model.
+Research Data Mart model.
 
-This table contains only data intended for research.
-No direct patient identifiers are stored.
+Stores anonymized healthcare information for
+secondary research and analytics.
+
+IMPORTANT:
+This table must not contain direct patient identifiers.
 """
 
 from sqlalchemy import Column
@@ -26,7 +29,10 @@ class ResearchData(Base):
         index=True
     )
 
-    # Generalised demographic information
+    # ========================================================
+    # Generalized demographic information
+    # ========================================================
+
     age_group = Column(
         String,
         nullable=True
@@ -42,13 +48,11 @@ class ResearchData(Base):
         nullable=True
     )
 
+    # ========================================================
     # Clinical information
-    disease = Column(
-        String,
-        nullable=True
-    )
+    # ========================================================
 
-    blood_type = Column(
+    blood_group = Column(
         String,
         nullable=True
     )
@@ -68,7 +72,15 @@ class ResearchData(Base):
         nullable=True
     )
 
-    # Numerical clinical data
+    current_conditions = Column(
+        String,
+        nullable=True
+    )
+
+    # ========================================================
+    # Perturbed numerical information
+    # ========================================================
+
     height = Column(
         Float,
         nullable=True
@@ -79,10 +91,9 @@ class ResearchData(Base):
         nullable=True
     )
 
-    glucose = Column(
-        Float,
-        nullable=True
-    )
+    # ========================================================
+    # Research metadata
+    # ========================================================
 
     created_at = Column(
         DateTime(timezone=True),
