@@ -49,6 +49,15 @@ class ResearchData(Base):
     )
 
     # ========================================================
+    # Disease / prediction target
+    # ========================================================
+
+    disease = Column(
+        String,
+        nullable=True
+    )
+
+    # ========================================================
     # Clinical information
     # ========================================================
 
@@ -78,7 +87,7 @@ class ResearchData(Base):
     )
 
     # ========================================================
-    # Perturbed numerical information
+    # Numerical research features
     # ========================================================
 
     height = Column(
@@ -87,6 +96,11 @@ class ResearchData(Base):
     )
 
     weight = Column(
+        Float,
+        nullable=True
+    )
+
+    glucose = Column(
         Float,
         nullable=True
     )
