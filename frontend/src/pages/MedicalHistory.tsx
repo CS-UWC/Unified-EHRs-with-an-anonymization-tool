@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
 import { apiRequest } from "../services/api";
@@ -20,10 +21,23 @@ interface MedicalRecord {
   updated_at: string | null;
 }
 
-function formatDate(date: string | null): string {
-  if (!date) {
-    return "Date unavailable";
+function displayValue(value: string | null | undefined): string {
+  const cleaned = value?.trim();
+
+  if (
+    !cleaned ||
+    cleaned.toLowerCase() === "string" ||
+    cleaned.toLowerCase() === "null" ||
+    cleaned.toLowerCase() === "undefined"
+  ) {
+    return "Not recorded";
   }
+
+  return cleaned;
+}
+
+function formatDate(date: string | null): string {
+  if (!date) return "Date unavailable";
 
   const parsedDate = new Date(date);
 
@@ -39,20 +53,41 @@ function formatDate(date: string | null): string {
 }
 
 function splitValues(value: string | null): string[] {
-  if (!value) {
-    return [];
-  }
+  const cleaned = displayValue(value);
 
-  return value
+  if (cleaned === "Not recorded") return [];
+
+  return cleaned
     .split(",")
     .map((item) => item.trim())
-    .filter(Boolean);
+    .filter(
+      (item) =>
+        item.length > 0 &&
+        item.toLowerCase() !== "string"
+    );
+}
+
+function Detail({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null;
+}) {
+  return (
+    <div className="medical-detail">
+      <span>{label}</span>
+      <p>{displayValue(value)}</p>
+    </div>
+  );
 }
 
 export default function MedicalHistory() {
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expandedRecordId, setExpandedRecordId] =
+    useState<number | null>(null);
 
   useEffect(() => {
     async function loadMedicalHistory() {
@@ -93,332 +128,224 @@ export default function MedicalHistory() {
     <AppShell
       role="PATIENT"
       title="Medical History"
-      subtitle="Your unified healthcare records across providers."
+      subtitle="Your healthcare records in one place."
     >
-      {/* =====================================================
-          SUMMARY
-      ====================================================== */}
-
+      {/* Summary cards */}
       <div className="summary-strip">
         <div>
-          <span>Chronic conditions</span>
+          <span>Medical records</span>
+          <strong>{records.length}</strong>
+        </div>
+
+        <div>
+          <span>Current conditions</span>
           <strong>
             {conditions.length > 0
-              ? conditions.join(" • ")
-              : "No conditions recorded"}
+              ? conditions.join(", ")
+              : "None recorded"}
           </strong>
         </div>
 
         <div>
-          <span>Allergies</span>
+          <span>Known allergies</span>
           <strong>
             {allergies.length > 0
-              ? allergies.join(" • ")
-              : "No allergies recorded"}
+              ? allergies.join(", ")
+              : "None recorded"}
           </strong>
         </div>
 
         <div>
           <span>Blood group</span>
           <strong>
-            {latestRecord?.blood_type || "Not recorded"}
+            {displayValue(latestRecord?.blood_type)}
           </strong>
         </div>
       </div>
 
-      {/* =====================================================
-          LOADING
-      ====================================================== */}
-
+      {/* Loading state */}
       {loading && (
         <section className="content-card">
-          <div className="card-heading">
-            <div>
-              <span className="section-label">
-                MEDICAL HISTORY
-              </span>
-              <h3>Loading records...</h3>
-            </div>
-          </div>
-
+          <h3>Loading medical records...</h3>
           <p className="muted-text">
-            Retrieving your medical records.
+            Retrieving your records securely.
           </p>
         </section>
       )}
 
-      {/* =====================================================
-          ERROR
-      ====================================================== */}
-
+      {/* Error state */}
       {!loading && error && (
         <section className="content-card">
-          <div className="card-heading">
-            <div>
-              <span className="section-label">
-                MEDICAL HISTORY
-              </span>
-              <h3>Unable to load records</h3>
-            </div>
-          </div>
-
+          <h3>Unable to load records</h3>
           <p className="muted-text">{error}</p>
         </section>
       )}
 
-      {/* =====================================================
-          CLINICAL RECORD TIMELINE
-      ====================================================== */}
-
+      {/* Clinical timeline */}
       {!loading && !error && (
-        <>
-          <section className="content-card">
-            <div className="card-heading">
-              <div>
-                <span className="section-label">
-                  CLINICAL TIMELINE
-                </span>
-
-                <h3>Medical records</h3>
-              </div>
-
-              <span className="muted-text">
-                {records.length}{" "}
-                {records.length === 1 ? "record" : "records"}
+        <section className="content-card">
+          <div className="card-heading">
+            <div>
+              <span className="section-label">
+                CLINICAL TIMELINE
               </span>
+              <h3>Medical records</h3>
+              <p className="muted-text">
+                Select a record to view its full details.
+              </p>
             </div>
 
-            {records.length === 0 ? (
-              <p className="muted-text">
-                No medical records are currently available.
-              </p>
-            ) : (
-              <div className="table-wrap">
-                <table className="modern-table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Facility</th>
-                      <th>Physician</th>
-                      <th>Conditions</th>
-                      <th>Province</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {records.map((record) => (
-                      <tr key={record.id}>
-                        <td>
-                          {formatDate(record.created_at)}
-                        </td>
-
-                        <td>
-                          {record.hospital_name ||
-                            "Not recorded"}
-                        </td>
-
-                        <td>
-                          {record.primary_physician ||
-                            "Not recorded"}
-                        </td>
-
-                        <td>
-                          <span className="condition-tag">
-                            {record.current_conditions ||
-                              "No conditions recorded"}
-                          </span>
-                        </td>
-
-                        <td>
-                          {record.province ||
-                            "Not recorded"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-
-          {/* =================================================
-              CURRENT CONDITIONS
-          ================================================== */}
-
-          <div className="dashboard-grid">
-            <section className="content-card">
-              <div className="card-heading">
-                <div>
-                  <span className="section-label">
-                    CONDITIONS
-                  </span>
-
-                  <h3>Current conditions</h3>
-                </div>
-              </div>
-
-              <div className="condition-list">
-                {conditions.length === 0 ? (
-                  <div>
-                    <strong>No conditions recorded</strong>
-                    <span>
-                      No current conditions are available.
-                    </span>
-                  </div>
-                ) : (
-                  conditions.map((condition, index) => (
-                    <div key={`${condition}-${index}`}>
-                      <strong>{condition}</strong>
-                      <span>Current medical condition</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
-
-            {/* ===============================================
-                ALLERGIES
-            ================================================ */}
-
-            <section className="content-card">
-              <div className="card-heading">
-                <div>
-                  <span className="section-label">
-                    ALLERGIES
-                  </span>
-
-                  <h3>Known allergies</h3>
-                </div>
-              </div>
-
-              <div className="condition-list">
-                {allergies.length === 0 ? (
-                  <div>
-                    <strong>No allergies recorded</strong>
-                    <span>
-                      No known allergies are available.
-                    </span>
-                  </div>
-                ) : (
-                  allergies.map((allergy, index) => (
-                    <div key={`${allergy}-${index}`}>
-                      <strong>{allergy}</strong>
-                      <span>Known allergy</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
+            <span className="record-count">
+              {records.length}{" "}
+              {records.length === 1 ? "record" : "records"}
+            </span>
           </div>
 
-          {/* =================================================
-              ADDITIONAL MEDICAL INFORMATION
-          ================================================== */}
+          {records.length === 0 ? (
+            <div className="medical-empty-state">
+              <h4>No medical records yet</h4>
+              <p>
+                Your available healthcare records will appear here
+                when they have been added to your profile.
+              </p>
+            </div>
+          ) : (
+            <div className="medical-timeline">
+              {records.map((record) => {
+                const isExpanded =
+                  expandedRecordId === record.id;
 
-          {latestRecord && (
-            <section className="content-card">
-              <div className="card-heading">
-                <div>
-                  <span className="section-label">
-                    MEDICAL INFORMATION
-                  </span>
+                return (
+                  <article
+                    className={`timeline-item ${
+                      isExpanded ? "is-expanded" : ""
+                    }`}
+                    key={record.id}
+                  >
+                    <button
+                      type="button"
+                      className="timeline-record-button"
+                      aria-expanded={isExpanded}
+                      aria-controls={`record-details-${record.id}`}
+                      onClick={() =>
+                        setExpandedRecordId(
+                          isExpanded ? null : record.id
+                        )
+                      }
+                    >
+                      <span className="timeline-marker" />
 
-                  <h3>Additional details</h3>
-                </div>
-              </div>
+                      <span className="timeline-record-content">
+                        <span className="timeline-date">
+                          {formatDate(record.created_at)}
+                        </span>
 
-              <div className="dashboard-grid">
-                <div>
-                  <span className="section-label">
-                    MEDICAL HISTORY
-                  </span>
+                        <strong className="timeline-record-title">
+                          Medical record
+                        </strong>
 
-                  <p>
-                    {latestRecord.medical_history ||
-                      "No medical history recorded."}
-                  </p>
-                </div>
+                        <span className="timeline-record-summary">
+                          {displayValue(
+                            record.current_conditions
+                          ) === "Not recorded"
+                            ? "No condition details recorded"
+                            : displayValue(
+                                record.current_conditions
+                              )}
+                        </span>
 
-                <div>
-                  <span className="section-label">
-                    CURRENT MEDICATIONS
-                  </span>
+                        <span className="timeline-record-meta">
+                          {displayValue(record.hospital_name)}
+                          {" · "}
+                          {displayValue(record.primary_physician)}
+                        </span>
+                      </span>
 
-                  <p>
-                    {latestRecord.current_medications ||
-                      "No current medications recorded."}
-                  </p>
-                </div>
+                      <span className="timeline-expand-label">
+                        {isExpanded
+                          ? "Hide details"
+                          : "View details"}
+                        <span aria-hidden="true">
+                          {isExpanded ? " −" : " +"}
+                        </span>
+                      </span>
+                    </button>
 
-                <div>
-                  <span className="section-label">
-                    HEIGHT
-                  </span>
+                    {isExpanded && (
+                      <div
+                        id={`record-details-${record.id}`}
+                        className="record-details-panel"
+                      >
+                        <div className="record-details-heading">
+                          <div>
+                            <span className="section-label">
+                              RECORD DETAILS
+                            </span>
+                            <h4>
+                              Medical record from{" "}
+                              {formatDate(record.created_at)}
+                            </h4>
+                          </div>
+                        </div>
 
-                  <p>
-                    {latestRecord.height ||
-                      "Not recorded"}
-                  </p>
-                </div>
-
-                <div>
-                  <span className="section-label">
-                    WEIGHT
-                  </span>
-
-                  <p>
-                    {latestRecord.weight ||
-                      "Not recorded"}
-                  </p>
-                </div>
-
-                <div>
-                  <span className="section-label">
-                    PRIMARY PHYSICIAN
-                  </span>
-
-                  <p>
-                    {latestRecord.primary_physician ||
-                      "Not recorded"}
-                  </p>
-                </div>
-
-                <div>
-                  <span className="section-label">
-                    FACILITY
-                  </span>
-
-                  <p>
-                    {latestRecord.hospital_name ||
-                      "Not recorded"}
-                  </p>
-                </div>
-
-                <div>
-                  <span className="section-label">
-                    PROVINCE
-                  </span>
-
-                  <p>
-                    {latestRecord.province ||
-                      "Not recorded"}
-                  </p>
-                </div>
-
-                <div>
-                  <span className="section-label">
-                    EMERGENCY CONTACT
-                  </span>
-
-                  <p>
-                    {latestRecord.emergency_contact ||
-                      "Not recorded"}
-                  </p>
-                </div>
-              </div>
-            </section>
+                        <div className="record-details-grid">
+                          <Detail
+                            label="Medical history"
+                            value={record.medical_history}
+                          />
+                          <Detail
+                            label="Current conditions"
+                            value={record.current_conditions}
+                          />
+                          <Detail
+                            label="Known allergies"
+                            value={record.allergies}
+                          />
+                          <Detail
+                            label="Current medications"
+                            value={record.current_medications}
+                          />
+                          <Detail
+                            label="Blood group"
+                            value={record.blood_type}
+                          />
+                          <Detail
+                            label="Height"
+                            value={record.height}
+                          />
+                          <Detail
+                            label="Weight"
+                            value={record.weight}
+                          />
+                          <Detail
+                            label="Healthcare professional"
+                            value={record.primary_physician}
+                          />
+                          <Detail
+                            label="Healthcare facility"
+                            value={record.hospital_name}
+                          />
+                          <Detail
+                            label="Province"
+                            value={record.province}
+                          />
+                          <Detail
+                            label="Emergency contact"
+                            value={record.emergency_contact}
+                          />
+                          <Detail
+                            label="Last updated"
+                            value={record.updated_at}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
           )}
-        </>
+        </section>
       )}
     </AppShell>
   );
