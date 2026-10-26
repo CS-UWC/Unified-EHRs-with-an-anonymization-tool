@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   FaCalendarAlt,
@@ -17,6 +18,9 @@ import {
   FaImages,
   FaShieldAlt,
 } from "react-icons/fa";
+
+import { getCurrentUser } from "../services/auth";
+import type { CurrentUser } from "../services/auth";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -42,6 +46,15 @@ const externalLinks = [
   { to: "/external/records", label: "Authorised Records", icon: <FaClipboardList /> },
 ];
 
+function getInitials(user: CurrentUser | null): string {
+  if (!user) return "?";
+
+  const first = user.first_name?.trim().charAt(0) ?? "";
+  const last = user.last_name?.trim().charAt(0) ?? "";
+
+  return `${first}${last}`.toUpperCase() || "?";
+}
+
 export default function AppShell({
   children,
   role,
@@ -49,17 +62,63 @@ export default function AppShell({
   subtitle,
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [userLoading, setUserLoading] = useState(true);
+
   const location = useLocation();
   const navigate = useNavigate();
 
-  const links = role === "PATIENT" ? patientLinks : externalLinks;
   const isExternal = role === "EXTERNAL_SYSTEM";
+  const links = isExternal ? externalLinks : patientLinks;
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCurrentUser() {
+      try {
+        const user = await getCurrentUser();
+
+        if (active) {
+          setCurrentUser(user);
+        }
+      } catch {
+        if (active) {
+          setCurrentUser(null);
+        }
+      } finally {
+        if (active) {
+          setUserLoading(false);
+        }
+      }
+    }
+
+    loadCurrentUser();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const logout = () => {
+    localStorage.removeItem("access_token");
     localStorage.removeItem("ehr_demo_logged_in");
     localStorage.removeItem("ehr_demo_role");
     navigate("/");
   };
+
+  const fullName = currentUser
+    ? `${currentUser.first_name} ${currentUser.last_name}`.trim()
+    : "";
+
+  const displayName = userLoading
+    ? "Loading profile..."
+    : fullName || "Account";
+
+  const displayRole = currentUser
+    ? currentUser.role.replaceAll("_", " ")
+    : isExternal
+      ? "External System"
+      : "Patient";
 
   return (
     <div className={`app-shell ${collapsed ? "sidebar-collapsed" : ""}`}>
@@ -68,13 +127,21 @@ export default function AppShell({
           <img src="/sa-ehrs-logo.png" alt="SA EHRS" />
           <div className="brand-copy">
             <strong>SA EHRS</strong>
-            <span>{isExternal ? "Healthcare Integration" : "Connected Healthcare"}</span>
+            <span>
+              {isExternal
+                ? "Healthcare Integration"
+                : "Connected Healthcare"}
+            </span>
           </div>
         </div>
 
         <div className="role-pill">
           {isExternal ? <FaUserMd /> : <FaHeartbeat />}
-          <span>{isExternal ? "External Healthcare System" : "Patient Portal"}</span>
+          <span>
+            {isExternal
+              ? "External Healthcare System"
+              : "Patient Portal"}
+          </span>
         </div>
 
         <nav className="sidebar-nav">
@@ -126,18 +193,25 @@ export default function AppShell({
       <main className="app-main">
         <header className="topbar">
           <div>
-            <div className="eyebrow">{isExternal ? "INTEROPERABILITY PORTAL" : "PATIENT PORTAL"}</div>
+            <div className="eyebrow">
+              {isExternal
+                ? "INTEROPERABILITY PORTAL"
+                : "PATIENT PORTAL"}
+            </div>
             <h1>{title}</h1>
             {subtitle && <p>{subtitle}</p>}
           </div>
 
           <div className="topbar-user">
             <div className="user-avatar">
-              {isExternal ? <FaUserMd /> : "EN"}
+              {isExternal && !currentUser
+                ? <FaUserMd />
+                : getInitials(currentUser)}
             </div>
+
             <div className="topbar-user-copy">
-              <strong>{isExternal ? "Cape Health Connect" : "Eyethu Njemla"}</strong>
-              <span>{isExternal ? "External System" : "Patient"}</span>
+              <strong>{displayName}</strong>
+              <span>{displayRole}</span>
             </div>
           </div>
         </header>
