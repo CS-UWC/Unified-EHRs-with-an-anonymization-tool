@@ -18,12 +18,16 @@ from app.api.fhir import (router as fhir_router)
 from app.api.access_requests import router as access_request_router
 from app.api import research_data
 from app.api.diabetes import router as diabetes_router
+# Import the patient notification API router.
+from app.api.notifications import router as notification_router
 
 # Import models
 from app.models import User
 from app.models import Patient
 from app.models.medical_image import MedicalImage
 from app.models.research_data import ResearchData
+# Import the notification model so SQLAlchemy registers its table.
+from app.models.notification import Notification
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)
@@ -72,6 +76,7 @@ app.include_router(fhir_router)
 app.include_router(access_request_router)
 app.include_router(research_data.router)
 app.include_router(diabetes_router)
+app.include_router(notification_router)
 
 
 @app.get("/")

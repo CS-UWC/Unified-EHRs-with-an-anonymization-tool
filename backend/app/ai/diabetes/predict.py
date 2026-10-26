@@ -20,7 +20,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[3]
 
 MODEL_PATH = (
     BACKEND_DIR
-    / "ml"
+    / "ML"
     / "diabetes"
     / "artifacts"
     / "diabetes_pipeline.joblib"
@@ -92,6 +92,5 @@ def predict_diabetes_risk(patient_data: dict) -> dict:
             "The model did not trigger a prototype warning. "
             "This does not rule out diabetes."
         ),
-        "synthetic_data_model": True,
-        "clinical_use_approved": False,
+        
     }

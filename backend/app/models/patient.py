@@ -119,3 +119,10 @@ class Patient(Base):
         "MedicalImage",
         back_populates="patient"
     )
+
+    # A patient can have multiple notifications.
+    notifications = relationship(
+        "Notification",
+        back_populates="patient",
+        cascade="all, delete-orphan",
+    )
