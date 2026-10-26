@@ -287,11 +287,7 @@ export default function PatientProfile() {
             Your identity is protected
           </strong>
 
-          <span>
-            External healthcare systems use your national
-            ID to resolve your record, while the internal
-            patient database ID is never exposed.
-          </span>
+        
         </div>
       </div>
     </AppShell>
