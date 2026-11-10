@@ -11,3 +11,6 @@ from app.models.external_system_permission import (
 from app.models.access_request import AccessRequest
 from app.models.medical_image import MedicalImage
 from app.models.research_data import ResearchData
+from app.models.user import User
+from app.models.patient import Patient
+from app.models.external_system import ExternalSystem

@@ -13,6 +13,9 @@ from app.dependencies import get_db
 from app.models import User
 from app.models.patient import Patient
 
+from app.models.external_system import ExternalSystem
+from app.schemas.external_system import ExternalSystemCreate
+
 from app.schemas.user import (
     UserRegister,
     UserResponse,
@@ -176,82 +179,82 @@ def login_user(
 
     }
 
-# ============================================================
-# DEVELOPMENT TEST EXTERNAL SYSTEM
-# ============================================================
-
 @router.post(
     "/create-test-external-system",
     response_model=UserResponse
 )
 def create_test_external_system(
-
+    external_system_data: ExternalSystemCreate,
     db: Session = Depends(get_db)
-
 ):
 
-    test_email = "external@test.com"
-
     # --------------------------------------------------------
-    # Check whether the test external system already exists
+    # Check whether the email is already registered
     # --------------------------------------------------------
 
     existing_user = (
-
         db.query(User)
-
         .filter(
-            User.email == test_email
+            User.email == external_system_data.email
         )
-
         .first()
-
     )
 
     if existing_user:
-
-        return existing_user
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
 
     # --------------------------------------------------------
-    # Create the external-system user
+    # Create the EXTERNAL_SYSTEM user account
     # --------------------------------------------------------
 
     hashed_password = hash_password(
-        "TestPassword123"
+        external_system_data.password
     )
 
     external_user = User(
-
-        first_name="Test",
-
-        last_name="External System",
-
-        email=test_email,
-
+        first_name=external_system_data.contact_first_name,
+        last_name=external_system_data.contact_last_name,
+        email=external_system_data.email,
         password_hash=hashed_password,
-
         role="EXTERNAL_SYSTEM"
-
     )
 
     # --------------------------------------------------------
-    # IMPORTANT:
-    #
-    # We do NOT create a Patient profile for an
-    # EXTERNAL_SYSTEM user.
+    # Add the user first so that SQLAlchemy can generate
+    # the user ID.
     # --------------------------------------------------------
 
-    db.add(
-        external_user
-    )
+    db.add(external_user)
 
     try:
 
+        db.flush()
+
+        # ----------------------------------------------------
+        # Create the linked external healthcare organisation
+        # profile.
+        # ----------------------------------------------------
+
+        external_system = ExternalSystem(
+            user_id=external_user.id,
+            organisation_name=external_system_data.organisation_name,
+            organisation_type=external_system_data.organisation_type,
+            province=external_system_data.province,
+            address=external_system_data.address,
+        )
+
+        db.add(external_system)
+
+        # ----------------------------------------------------
+        # Save both records.
+        # ----------------------------------------------------
+
         db.commit()
 
-        db.refresh(
-            external_user
-        )
+        db.refresh(external_user)
 
     except Exception:
 
@@ -259,7 +262,7 @@ def create_test_external_system(
 
         raise HTTPException(
             status_code=500,
-            detail="Could not create test external system"
+            detail="Could not create external healthcare system"
         )
 
     return external_user

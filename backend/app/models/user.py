@@ -64,3 +64,14 @@ class User(Base):
         uselist=False,
         cascade="all, delete-orphan"
     )
+    # ========================================================
+    # EXTERNAL SYSTEM PROFILE
+    # ========================================================
+
+    # One external-system user can have one organisation profile.
+    external_system = relationship(
+        "ExternalSystem",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
